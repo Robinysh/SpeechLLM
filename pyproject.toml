@@ -1,6 +1,6 @@
 
 [project]
-name = "template"
+name = "speechllm"
 version = "1.0.0"
 description = ""
 authors = [
@@ -14,6 +14,21 @@ dependencies = [
     "isort>=5.12.0",
     "autoflake>=2.2.0",
     "pylint>=2.17.5",
+    "transformers>=4.36.2",
+    "auto-gptq>=0.6.0",
+    "torch>=2.1.2",
+    "torchaudio>=2.1.2",
+    "tiktoken>=0.5.2",
+    "matplotlib>=3.8.2",
+    "einops>=0.7.0",
+    "transformers-stream-generator>=0.0.4",
+    "optimum>=1.16.1",
+    "packaging>=23.2",
+    "flash-attn>=2.4.0.post1",
+    "ninja>=1.11.1.1",
+    "rotary-emb @ git+https://github.com/Dao-AILab/flash-attention.git#subdirectory=csrc/rotary",
+    "dropout-layer-norm @ git+https://github.com/Dao-AILab/flash-attention.git#subdirectory=csrc/layer_norm",
+    "setuptools>=69.0.2",
 ]
 requires-python = ">=3.10"
 readme = "README.md"
@@ -35,5 +50,6 @@ lint-format.composite = ["lint-format-python", "lint-format-gitignore", "lint-fo
 pdm-flake8.shell = "git ls-files '*.py' | xargs -t pdm run flake8"
 pdm-pylint.shell = "git ls-files '*.py' | xargs -t pdm run pylint"
 lint.composite = ["pdm-flake8", "pdm-pylint"]
-start.shell = "if [ -e .env ]; then pdm run python src/template/main.py; else echo 'Make a copy of .env from .env.sample before you start.'; fi"
+start.shell = "if [ -e .env ]; then pdm run python src/speechllm/main.py; else echo 'Make a copy of .env from .env.sample before you start.'; fi"
+data-generate.shell = "if [ -e .env ]; then pdm run python src/speechllm/data_generation/qwenaudio.py; else echo 'Make a copy of .env from .env.sample before you start.'; fi"
 pre_install.shell = "export CMAKE_ARGS='-DLLAMA_CUBLAS=on' FORCE_CMAKE=1"

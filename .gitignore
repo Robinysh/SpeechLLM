@@ -75,6 +75,7 @@ profile_default/
 sdist/
 share/python-wheels/
 target/
+tmp/
 var/
 venv.bak/
 venv/

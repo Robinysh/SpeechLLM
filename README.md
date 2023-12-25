@@ -1,4 +1,4 @@
-# Python Template
+# Speech LLM
 
 ## Setup
 
