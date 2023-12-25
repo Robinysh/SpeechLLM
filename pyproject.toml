@@ -53,3 +53,7 @@ lint.composite = ["pdm-flake8", "pdm-pylint"]
 start.shell = "if [ -e .env ]; then pdm run python src/speechllm/main.py; else echo 'Make a copy of .env from .env.sample before you start.'; fi"
 data-generate.shell = "if [ -e .env ]; then pdm run python src/speechllm/data_generation/qwenaudio.py; else echo 'Make a copy of .env from .env.sample before you start.'; fi"
 pre_install.shell = "export CMAKE_ARGS='-DLLAMA_CUBLAS=on' FORCE_CMAKE=1"
+
+[tool.pdm.options]
+sync = ["--no-isolation"]
+installsync = ["--no-isolation"]
