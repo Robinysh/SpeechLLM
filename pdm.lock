@@ -2,10 +2,10 @@
 # It is not intended for manual editing.
 
 [metadata]
-groups = ["default"]
+groups = ["default", "dev"]
 strategy = ["cross_platform"]
 lock_version = "4.4"
-content_hash = "sha256:feae009da1818bd7963acd16aa690c2927ae6a5c4ad78e92ba9d660a8c34a1c7"
+content_hash = "sha256:803f1f63c988e7b27ec357ae0f32bf0870ec6d732020968543ef70d5ed3cb989"
 
 [[package]]
 name = "accelerate"
@@ -810,15 +810,6 @@ files = [
     {file = "Cython-3.0.7-cp312-cp312-win_amd64.whl", hash = "sha256:f3845c4506e0d207c5e268fb02813928f3a1e135de954a379f165ef0d581da47"},
     {file = "Cython-3.0.7-py2.py3-none-any.whl", hash = "sha256:936ec37b261b226d7404eff23a9aad284098338150d42a53d6a9af12b18d3892"},
     {file = "Cython-3.0.7.tar.gz", hash = "sha256:fb299acf3a578573c190c858d49e0cf9d75f4bc49c3f24c5a63804997ef09213"},
-]
-
-[[package]]
-name = "dataclasses"
-version = "0.6"
-summary = "A backport of the dataclasses module for Python 3.6"
-files = [
-    {file = "dataclasses-0.6-py3-none-any.whl", hash = "sha256:454a69d788c7fda44efd71e259be79577822f5e3f53f029a22d08004e951dc9f"},
-    {file = "dataclasses-0.6.tar.gz", hash = "sha256:6988bd2b895eef432d562370bb707d540f32f7360ab13da45340101bc2307d84"},
 ]
 
 [[package]]
@@ -3524,8 +3515,10 @@ files = [
 
 [[package]]
 name = "resemble-enhance"
-version = "0.0.1"
+version = "0.0.2.dev240105094113"
 requires_python = ">=3.10"
+git = "https://github.com/Robinysh/resemble-enhance-optimize.git"
+revision = "c84e2c5641cb9fec0a14e404caadff6528b539ea"
 summary = "Speech denoising and enhancement with deep learning"
 dependencies = [
     "celluloid==0.2.0",
@@ -3546,10 +3539,6 @@ dependencies = [
     "torchaudio==2.1.1",
     "torchvision==0.16.1",
     "tqdm==4.66.1",
-]
-files = [
-    {file = "resemble-enhance-0.0.1.tar.gz", hash = "sha256:64f67a4cd9f7cbbaa6555364b328eabeac82ea60bf5f7880e06794ff1fa4e942"},
-    {file = "resemble_enhance-0.0.1-py3-none-any.whl", hash = "sha256:9aa565cba75b93e2f82603d72c19aadaf4fc5237ca0babca7dd0853b5bf3432a"},
 ]
 
 [[package]]

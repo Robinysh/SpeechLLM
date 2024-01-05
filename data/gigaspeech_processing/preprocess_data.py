@@ -113,7 +113,14 @@ def enhance_audio(audio, args):
 
     print(f"Enhancing {fpath}.")
     wav, new_sr = enhance(
-        dwav, sampling_rate, device, nfe=nfe, solver=solver, lambd=lambd, tau=tau
+        dwav,
+        sampling_rate,
+        device,
+        nfe=nfe,
+        solver=solver,
+        lambd=lambd,
+        tau=tau,
+        dtype=torch.half,
     )
     wav = wav.cpu().numpy()
 
@@ -175,6 +182,7 @@ def process_audio(args):
     gigaspeech = GigaSpeech(args.gigaspeech_dataset_dir)
     subset = "{" + args.subset + "}"
     total_len = len([0 for _ in gigaspeech.audios(subset)])
+    # total_len = 100
 
     for audio in gigaspeech.audios(subset):
         enhance_audio(audio, args)
