@@ -4,6 +4,7 @@ import os
 from functools import cache
 from pathlib import Path
 
+import soundfile as sf
 import torch
 import torchaudio
 from bark_hubert_quantizer.customtokenizer import CustomTokenizer
@@ -11,7 +12,6 @@ from bark_hubert_quantizer.hubert_manager import HuBERTManager
 from bark_hubert_quantizer.pre_kmeans_hubert import CustomHubert
 from encodec.utils import convert_audio
 from resemble_enhance.enhancer.inference import enhance, load_enhancer
-from scipy.io.wavfile import write
 from speechcolab.datasets.gigaspeech import GigaSpeech
 from tqdm import tqdm
 
@@ -30,7 +30,7 @@ gigaspeech_punctuations = {
 # pylint: disable-next=too-many-locals
 def split_audio(audio, args):
     audio_path = (
-        Path(args.dst_dir) / "enhanced" / Path(audio["path"]).with_suffix(".wav").name
+        Path(args.dst_dir) / "enhanced" / Path(audio["path"]).with_suffix(".flac").name
     )
 
     if not audio_path.exists():
@@ -40,7 +40,7 @@ def split_audio(audio, args):
     utts = []
     for segment in audio["segments"]:
         segment_path = (
-            Path(args.dst_dir) / "splitted" / audio["aid"] / f"{segment['sid']}.wav"
+            Path(args.dst_dir) / "splitted" / audio["aid"] / f"{segment['sid']}.flac"
         )
         text = segment["text_tn"]
         for punctuation, replacement in gigaspeech_punctuations:
@@ -82,11 +82,12 @@ def split_audio(audio, args):
         waveform = long_waveform[0][frame_offset : frame_offset + num_frames]  # mono
 
         segment_path = (
-            Path(args.dst_dir) / "splitted" / audio["aid"] / f"{segment['sid']}.wav"
+            Path(args.dst_dir) / "splitted" / audio["aid"] / f"{segment['sid']}.flac"
         )
         segment_path.parent.mkdir(parents=True, exist_ok=True)
 
-        write(segment_path, new_sample_rate, waveform.numpy())
+        # write(segment_path, new_sample_rate, waveform.numpy())
+        sf.write(segment_path, waveform.numpy(), new_sample_rate)
     return utts
 
 
@@ -102,11 +103,13 @@ def enhance_audio(audio, args):
         print(f"{fpath} not found, skipping.")
         return
 
-    save_path = Path(args.dst_dir) / "enhanced" / fpath.with_suffix(".wav").name
+    # save_path = Path(args.dst_dir) / "enhanced" / fpath.with_suffix(".wav").name
+    save_path = Path(args.dst_dir) / "enhanced" / fpath.with_suffix(".flac").name
     save_path.parent.mkdir(parents=True, exist_ok=True)
     if save_path.exists():
         print(f"{fpath} already enhanced.")
         return
+    save_path = Path(args.dst_dir) / "enhanced" / fpath.with_suffix(".flac").name
 
     dwav, sampling_rate = torchaudio.load(fpath)
     dwav = dwav.mean(dim=0)
@@ -124,7 +127,8 @@ def enhance_audio(audio, args):
     )
     wav = wav.cpu().numpy()
 
-    write(save_path, new_sr, wav)
+    # write(save_path, new_sr, wav)
+    sf.write(save_path, wav, new_sr)
 
 
 @cache
@@ -145,7 +149,7 @@ def load_hubert(model="quantifier_V1_hubert_base_ls960_23.pth", device="cuda"):
 
 
 def generate_hubert_semantics_emb(audio, segment, args, device="cuda"):
-    fpath = Path(args.dst_dir) / "splitted" / audio["aid"] / f"{segment['sid']}.wav"
+    fpath = Path(args.dst_dir) / "splitted" / audio["aid"] / f"{segment['sid']}.flac"
 
     if not fpath.exists():
         print(f"{fpath} not found, skipping.")
@@ -166,9 +170,9 @@ def generate_hubert_semantics_emb(audio, segment, args, device="cuda"):
 
     # Load and pre-process the audio waveform
     wav, sr = torchaudio.load(fpath)
-    wav = convert_audio(wav, sr, 24000, 1)
+    wav = convert_audio(wav, sr, 16000, 1)
     wav = wav.to(device).half()
-    semantic_vectors = model.forward(wav, input_sample_hz=24000)
+    semantic_vectors = model.forward(wav, input_sample_hz=16000)
     semantic_tokens = tokenizer.get_token(semantic_vectors)
     semantic_tokens = semantic_tokens.cpu()
 
@@ -184,7 +188,11 @@ def process_audio(args):
     total_len = len([0 for _ in gigaspeech.audios(subset)])
     # total_len = 100
 
-    for audio in gigaspeech.audios(subset):
+    for i, audio in enumerate(gigaspeech.audios(subset)):
+        if i % 15 == 0:
+            load_enhancer.cache_clear()
+            torch.cuda.empty_cache()
+            print("Reloading enhancer")
         enhance_audio(audio, args)
     load_enhancer.cache_clear()
 
@@ -212,7 +220,7 @@ def process_audio(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Save the audio segments into wav, and meta into tsv."
+        description="Save the audio segments into flac, and meta into tsv."
     )
     parser.add_argument(
         "--subset",

@@ -36,6 +36,7 @@ dependencies = [
     "bark-hubert-quantizer @ git+https://github.com/gitmylo/bark-voice-cloning-HuBERT-quantizer.git",
     "fairseq @ git+https://github.com/One-sixth/fairseq.git",
     "resemble-enhance @ git+https://github.com/Robinysh/resemble-enhance-optimize.git",
+    "soundfile>=0.12.1",
 ]
 requires-python = ">=3.10"
 readme = "README.md"
@@ -53,6 +54,7 @@ pdm-black.shell = "git ls-files '*.py' | xargs -t pdm run black -q"
 lint-format-python.composite = ["pdm-autoflake", "pdm-isort", "pdm-black"]
 lint-format-gitignore.shell = "git ls-files '.gitignore' | xargs -tI {} sort -o {} {}"
 lint-format-yaml.shell = "git ls-files '*.yml' '*.yaml' | xargs -t yq -i -S -Y -w 10000 ."
+lint-format.env = {LC_ALL="C"}
 lint-format.composite = ["lint-format-python", "lint-format-gitignore", "lint-format-yaml"]
 pdm-flake8.shell = "git ls-files '*.py' | xargs -t pdm run flake8"
 pdm-pylint.shell = "git ls-files '*.py' | xargs -t pdm run pylint"
