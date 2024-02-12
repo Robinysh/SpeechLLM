@@ -1,0 +1,29 @@
+data_module:
+  _target_: lightningtools.data.DataModule
+  safe: false
+  train_dataloader: ${data_module.train_dataloader}
+  train_dataset: ${data_module.train_dataset}
+  val_dataloader: ${data_module.val_dataloader}
+  val_dataset: ${data_module.val_dataset}
+train_dataloader:
+  batch_size: ${batch_size}
+  collate_fn:
+    _partial_: true
+    _target_: speechllm.data.collate.collate
+  drop_last: true
+  local_shuffle_buffer_size: 1024
+  prefetch_batches: 4
+train_dataset:
+  _target_: speechllm.data.pipeline.baseline
+  database: ${DataBase.train}
+val_dataloader:
+  batch_size: ${batch_size}
+  collate_fn:
+    _partial_: true
+    _target_: speechllm.data.collate.collate
+  drop_last: true
+  local_shuffle_buffer_size: 1024
+  prefetch_batches: 4
+val_dataset:
+  _target_: speechllm.data.pipeline.baseline
+  database: ${DataBase.val}

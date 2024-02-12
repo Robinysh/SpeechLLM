@@ -1,0 +1,17 @@
+loss_functions:
+  cross_entropy_loss:
+    loss_fn:
+      _partial_: true
+      _target_: speechllm.losses.cross_entropy_loss
+    scale: 1
+  l2_loss:
+    loss_fn:
+      _partial_: true
+      _target_: speechllm.losses.l2_loss
+    scale: 1
+loss_sets:
+  default:
+    train:
+      - cross_entropy_loss
+    val:
+      - cross_entropy_loss

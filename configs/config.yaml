@@ -1,0 +1,48 @@
+batch_size: 2
+config_optimizers:
+  default:
+    decay_step: 105000
+    learning_rate: 0.0001
+    warmup_step: 2000
+    weight_decay: 0
+defaults:
+  - DataBase: default
+  - data_module: default
+  - model: qwen_lora
+  - losses: default
+  - callbacks: default
+last_ckpt: null
+lightning_module:
+  _target_: speechllm.trainer.Model
+  gradient_clip_val: 1500000
+  lossfuncs: ${losses}
+  model: ${model}
+  optimizer_order:
+    - default
+  train_stage: ${train_stage}
+load_optimizer: false
+project_name: speechllm
+train_stage: default
+trainer:
+  _target_: lightning.Trainer
+  accelerator: "gpu"
+  callbacks:
+    - ${callbacks.checkpoint_callback}
+    - ${callbacks.lr_callback}
+  detect_anomaly: false
+  devices: 1
+  limit_train_batches: null
+  limit_val_batches: null
+  log_every_n_steps: 200
+  logger: ${wandb_logger}
+  max_epochs: 99999999
+  num_sanity_val_steps: 1
+  precision: bf16-true
+  reload_dataloaders_every_n_epochs: 1
+  val_check_interval: 200
+wandb_logger:
+  _target_: lightning.pytorch.loggers.WandbLogger
+  id: ${project_name}
+  name: ${project_name}
+  project: ${project_name}
+  resume: "auto"

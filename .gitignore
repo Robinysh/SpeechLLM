@@ -39,7 +39,10 @@
 .tox/
 .venv/
 .webassets-cache
+/data/
+/outputs/
 /site
+/wandb/
 ENV/
 MANIFEST
 __pycache__/

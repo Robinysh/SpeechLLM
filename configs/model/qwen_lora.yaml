@@ -1,0 +1,14 @@
+inference_pipeline:
+  - fn: forward
+    module: qwen_lora
+modules:
+  qwen_lora:
+    _target_: speechllm.models.modules.qwen_lora.constructor
+param_group:
+  default:
+    - qwen_lora
+pipelines:
+  default:
+    default:
+      - fn: forward
+        module: qwen_lora
