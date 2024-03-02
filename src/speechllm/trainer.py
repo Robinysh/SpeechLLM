@@ -6,8 +6,8 @@ from lightningtools.trainer import BaseLightningModule
 from lightningtools.utils import NoamLR
 from loguru import logger
 
-logger.remove()
-logger.add(sys.stderr, level="INFO")
+#logger.remove()
+#logger.add(sys.stderr, level="INFO")
 
 torch.set_float32_matmul_precision("medium")
 

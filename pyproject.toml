@@ -65,7 +65,7 @@ pdm-flake8.shell = "git ls-files '*.py' | xargs -t pdm run flake8"
 pdm-pylint.shell = "git ls-files '*.py' | xargs -t pdm run pylint"
 lint.composite = ["pdm-flake8", "pdm-pylint"]
 start.shell = "if [ -e .env ]; then pdm run lightning_trainer; else echo 'Make a copy of .env from .env.sample before you start.'; fi"
-data-generate.shell = "if [ -e .env ]; then pdm run python src/speechllm/data_generation/qwenaudio.py; else echo 'Make a copy of .env from .env.sample before you start.'; fi"
+data-generate.shell = "if [ -e .env ]; then pdm run python src/speechllm/data_generation/main.py; else echo 'Make a copy of .env from .env.sample before you start.'; fi"
 pre_install.shell = "export CMAKE_ARGS='-DLLAMA_CUBLAS=on' FORCE_CMAKE=1"
 
 [tool.pdm.options]
