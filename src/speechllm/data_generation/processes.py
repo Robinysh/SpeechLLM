@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import soundfile as sf
@@ -5,6 +6,8 @@ import torch
 import torchaudio
 from icecream import ic
 from resemble_enhance.enhancer.inference import enhance
+
+from speechllm.data_generation.speechcolab.datasets.gigaspeech import GigaSpeech
 
 
 def rename_cols(row):
@@ -40,7 +43,7 @@ class AudioEnhancer:
         save_path = (
             Path(row["output_path"]) / "enhanced" / fpath.with_suffix(".flac").name
         )
-        row["enhanced_audio"] = save_path
+        row["enhanced_audio"] = str(save_path)
         save_path.parent.mkdir(parents=True, exist_ok=True)
         if save_path.exists():
             # print(f"{fpath} already enhanced.")
@@ -72,8 +75,23 @@ def add_cols(row, cols):
     return row
 
 
-def download_audio(row):
-    return row
+class Downloader:
+    def __init__(self, data_path):
+        self.gigaspeech = GigaSpeech(data_path)
+        self.gigaspeech.password = os.getenv("GIGASPEECH_PASSWORD")
+        self.gigaspeech.gigaspeech_release_url = (
+            "https://freedata.oss-cn-beijing.aliyuncs.com/magichub/GigaSpeech"
+        )
+
+    def __call__(self, row):
+        self.gigaspeech.download_and_process_object_from_release(
+            row["md5"], Path(row["path"]).parent.with_suffix(".tgz.aes")
+        )
+        return row
+
+
+# from ray.util import inspect_serializabilit4
+# inspect_serializability(download_audio, name="test")
 
 
 class Diarizer:

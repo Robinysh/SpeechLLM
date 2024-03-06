@@ -3,14 +3,7 @@ import ray
 import torch
 from speechcolab.datasets.gigaspeech import GigaSpeech
 
-from speechllm.data_generation.processes import (
-    AudioEnhancer,
-    Diarizer,
-    add_cols,
-    download_audio,
-    filter_dialogues,
-    split_dialogues,
-)
+from speechllm.data_generation.processes import Downloader, add_cols
 
 
 class GigaSpeechDataset(torch.utils.data.IterableDataset):
@@ -68,15 +61,16 @@ def main(data_path, output_path, subset):
         fn_kwargs={"cols": {"data_path": data_path, "output_path": output_path}},
     )
     # ds = ds.map(print_row)
-    ds = ds.map(download_audio)
-    ds = ds.map(AudioEnhancer, num_gpus=1, concurrency=1)
+    ds = ds.map(Downloader, concurrency=4, fn_constructor_args={"data_path": data_path})
+    # ds = ds.map(AudioEnhancer, num_gpus=1, concurrency=1)
     # ds = ds.map(generate_hubert_embs)
     # write metadata.tsv
-    ds = ds.map(Diarizer, concurrency=2)
-    ds = ds.map(split_dialogues)
-    ds = ds.map(filter_dialogues)
+    # ds = ds.map(Diarizer, concurrency=2)
+    # ds = ds.map(split_dialogues)
+    # ds = ds.map(filter_dialogues)
     ds.materialize()
 
 
 if __name__ == "__main__":
+    # pylint: disable=no-value-for-parameter
     main()
