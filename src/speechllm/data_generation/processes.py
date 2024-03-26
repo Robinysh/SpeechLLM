@@ -1,11 +1,13 @@
 import os
+import pickle
 from pathlib import Path
 
 import soundfile as sf
 import torch
 import torchaudio
 from icecream import ic
-from resemble_enhance.enhancer.inference import enhance
+from pyannote.audio import Pipeline
+from resemble_enhance.enhancer.inference import enhance, load_enhancer
 
 from speechllm.data_generation.speechcolab.datasets.gigaspeech import GigaSpeech
 
@@ -25,7 +27,7 @@ def extract_rows(row):
 # pylint: disable-next=too-few-public-methods
 class AudioEnhancer:
     def __init__(self):
-        pass
+        self.model = load_enhancer(None, "cuda")
 
     def __call__(self, row):
         device = "cuda"
@@ -75,6 +77,7 @@ def add_cols(row, cols):
     return row
 
 
+# pylint: disable=too-few-public-methods
 class Downloader:
     def __init__(self, data_path):
         self.gigaspeech = GigaSpeech(data_path)
@@ -96,9 +99,22 @@ class Downloader:
 
 class Diarizer:
     def __init__(self):
-        pass
+        self.pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1")
+        self.pipeline.to(torch.device("cuda:0"))
 
     def __call__(self, row):
+        # fname = Path(row['data_path'])/'enhanced'/Path(row['path']).with_suffix('.flac').name
+        fname = Path(row["data_path"]) / Path(row["path"])
+        waveform, sample_rate = torchaudio.load(fname)
+        diarization = self.pipeline({"waveform": waveform, "sample_rate": sample_rate})
+        save_path = (
+            Path(row["data_path"])
+            / "diarization"
+            / Path(row["path"]).with_suffix(".pkl").name
+        )
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        with save_path.open("wb") as fp:
+            pickle.dump(diarization, fp)
         return row
 
 

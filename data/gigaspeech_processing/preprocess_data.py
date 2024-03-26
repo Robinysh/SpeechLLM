@@ -53,6 +53,8 @@ def split_audio(audio, args):
                 "ID": segment["sid"],
                 "AUDIO": segment_path,
                 "DURATION": f"{duration:.4f}",
+                "BEGIN": f"{segment['begin_time']:.4f}",
+                "END": f"{segment['end_time']:.4f}",
                 "TEXT": text,
             }
         )
@@ -188,13 +190,15 @@ def process_audio(args):
     total_len = len([0 for _ in gigaspeech.audios(subset)])
     # total_len = 100
 
-    for i, audio in enumerate(gigaspeech.audios(subset)):
-        if i % 15 == 0:
-            load_enhancer.cache_clear()
-            torch.cuda.empty_cache()
-            print("Reloading enhancer")
-        enhance_audio(audio, args)
-    load_enhancer.cache_clear()
+    if not args.skip_enhance:
+        for i, audio in enumerate(gigaspeech.audios(subset)):
+            if i % 15 == 0:
+                load_enhancer.cache_clear()
+                torch.cuda.empty_cache()
+                torch.backends.cuda.cufft_plan_cache.clear()
+                print("Reloading enhancer")
+            enhance_audio(audio, args)
+        load_enhancer.cache_clear()
 
     csv_rows = []
     for audio in tqdm(gigaspeech.audios(subset), total=total_len):
@@ -204,7 +208,7 @@ def process_audio(args):
     with open(
         os.path.join(args.dst_dir, "metadata.tsv"), "w+", encoding="utf8"
     ) as csv_file:
-        csv_header_fields = ["ID", "AUDIO", "DURATION", "TEXT"]
+        csv_header_fields = ["ID", "AUDIO", "DURATION", "BEGIN", "END", "TEXT"]
         csv_writer = csv.DictWriter(
             csv_file, delimiter="\t", fieldnames=csv_header_fields, lineterminator="\n"
         )
@@ -232,5 +236,8 @@ if __name__ == "__main__":
         "gigaspeech_dataset_dir", help="The GigaSpeech corpus directory"
     )
     parser.add_argument("dst_dir", help="Ouput subset directory")
+    parser.add_argument(
+        "--skip_enhance", default=False, action=argparse.BooleanOptionalAction
+    )
 
     process_audio(parser.parse_args())
