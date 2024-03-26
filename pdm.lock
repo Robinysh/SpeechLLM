@@ -5,7 +5,7 @@
 groups = ["default"]
 strategy = ["cross_platform"]
 lock_version = "4.4.1"
-content_hash = "sha256:ae280b971b16b9d0b1df069a4cdf13079569e5c5978006231eb22ae21bb16237"
+content_hash = "sha256:0ebcd3658935e784a8dabe3a301eb83c4e159f21715c790269fd6b3b6e9e6878"
 
 [[package]]
 name = "accelerate"
@@ -2199,7 +2199,9 @@ files = [
 name = "lightningtools"
 version = "1.0"
 requires_python = ">=3.10"
-path = "/home/robinysh/code/ml/mlops/Lightning-Tools"
+git = "https://github.com/flyingmilktea/lightningtools"
+ref = "raydata"
+revision = "63d617c60107d557c1bd98ec3f25238db893be2e"
 summary = ""
 dependencies = [
     "argparse",
@@ -4085,7 +4087,8 @@ files = [
 name = "resemble-enhance"
 version = "0.0.2.dev240305164343"
 requires_python = ">=3.10"
-path = "/home/robinysh/Sync/ml/audio/resemble-enhance-optimize"
+git = "https://github.com/Robinysh/resemble-enhance-optimize"
+revision = "4d34338b4a0046e61f4695d8c4b87f1ae32cadf7"
 summary = "Speech denoising and enhancement with deep learning"
 dependencies = [
     "celluloid>=0.2.0",
