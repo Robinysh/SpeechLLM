@@ -23,7 +23,7 @@ dependencies = [
     "transformers-stream-generator>=0.0.4",
     "optimum>=1.16.1",
     "packaging>=23.2",
-    "flash-attn>=2.4.2",
+    "flash-attn>=2.5.6",
     "ninja>=1.11.1.1",
     "setuptools>=69.0.3",
     "jupyterlab>=4.0.10",
@@ -43,6 +43,7 @@ dependencies = [
     "pandas==2.0.3",
     "pyannote-audio>=3.1.1",
     "openai>=1.13.3",
+    "py-cpuinfo>=9.0.0",
 ]
 requires-python = ">=3.10"
 readme = "README.md"

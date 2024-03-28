@@ -5,7 +5,7 @@
 groups = ["default"]
 strategy = ["cross_platform"]
 lock_version = "4.4.1"
-content_hash = "sha256:0ebcd3658935e784a8dabe3a301eb83c4e159f21715c790269fd6b3b6e9e6878"
+content_hash = "sha256:242023eba639ac7ad204d764086552fb6ad88fba92826f2b280f288fb04d4e94"
 
 [[package]]
 name = "accelerate"
@@ -1159,7 +1159,7 @@ files = [
 
 [[package]]
 name = "flash-attn"
-version = "2.4.2"
+version = "2.5.6"
 requires_python = ">=3.7"
 summary = ""
 dependencies = [
@@ -1169,7 +1169,7 @@ dependencies = [
     "torch",
 ]
 files = [
-    {file = "flash_attn-2.4.2.tar.gz", hash = "sha256:eb822a8c4219b610e9d734cbc8cd9ee4547f27433815a2b90dc1462766feefc1"},
+    {file = "flash_attn-2.5.6.tar.gz", hash = "sha256:d25801aa060877cad997939bd7130faf620fdbeda947c3ffde5865906d430c36"},
 ]
 
 [[package]]

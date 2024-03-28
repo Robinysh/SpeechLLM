@@ -99,7 +99,10 @@ class Downloader:
 
 class Diarizer:
     def __init__(self):
-        self.pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1")
+        self.pipeline = Pipeline.from_pretrained(
+            "pyannote/speaker-diarization-3.1",
+            use_auth_token=os.environ.get("HF_AUTH_TOKEN", True),
+        )
         self.pipeline.to(torch.device("cuda:0"))
 
     def __call__(self, row):
