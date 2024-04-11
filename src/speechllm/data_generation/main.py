@@ -3,7 +3,7 @@ import ray
 import torch
 from speechcolab.datasets.gigaspeech import GigaSpeech
 
-from speechllm.data_generation.processes import Diarizer, add_cols
+from speechllm.data_generation.processes import DialogueFilter, Diarizer, add_cols
 
 
 # pylint: disable=abstract-method,too-few-public-methods
@@ -55,7 +55,7 @@ def main(data_path, output_path, subset):
     # write metadata.tsv
     ds = ds.map(Diarizer, concurrency=4, num_gpus=0.25)
     # ds = ds.map(split_dialogues)
-    # ds = ds.map(filter_dialogues)
+    ds = ds.map(DialogueFilter, concurrency=2)
     ds.materialize()
 
 
