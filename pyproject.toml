@@ -44,6 +44,7 @@ dependencies = [
     "pyannote-audio>=3.1.1",
     "openai>=1.13.3",
     "py-cpuinfo>=9.0.0",
+    "vllm==0.4.0",
 ]
 requires-python = ">=3.10"
 readme = "README.md"
@@ -72,6 +73,7 @@ start.shell = "if [ -e .env ]; then pdm run lightning_trainer; else echo 'Make a
 data-generate.env_file=".env"
 data-generate.shell = "pdm run python src/speechllm/data_generation/main.py"
 pre_install.shell = "export CMAKE_ARGS='-DLLAMA_CUBLAS=on' FORCE_CMAKE=1"
+llm_server.shell = " pdm run python -m vllm.entrypoints.openai.api_server --model TheBloke/Mixtral_11Bx2_MoE_19B-AWQ --quantization awq"
 
 [tool.pdm.options]
 sync = ["--no-isolation"]
