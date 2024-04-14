@@ -15,6 +15,7 @@ from icecream import ic
 from openai import OpenAI
 from pyannote.audio import Pipeline
 from pyannote.core import Segment
+from pydub import AudioSegment
 from resemble_enhance.enhancer.inference import enhance, load_enhancer
 
 from speechllm.data_generation.speechcolab.datasets.gigaspeech import GigaSpeech
@@ -130,6 +131,26 @@ class Diarizer:
 
 
 def split_dialogues(row):
+    dialogue_path = (
+        Path(row["data_path"]) / "dialogue_pairs" / Path(row["path"]).stem
+    ).with_suffix(".json")
+    if not dialogue_path.exists():
+        return row
+    dialogue_data = json.loads(dialogue_path.read_text())
+    if len(dialogue_data) == 0:
+        return row
+
+    save_path = Path(row["data_path"]) / "audio_pairs" / Path(row["path"]).stem
+    save_path.mkdir(parents=True, exist_ok=True)
+
+    audio = AudioSegment.from_file(Path(row["data_path"]) / row["path"])
+    for i, (seg1, seg2) in enumerate(dialogue_data):
+        audio1 = audio[seg1["begin_time"] * 1000 : seg1["end_time"] * 1000]
+        audio2 = audio[seg2["begin_time"] * 1000 : seg2["end_time"] * 1000]
+        seg1_path = (save_path / f"{Path(row['path']).stem}_{i}_1").with_suffix(".opus")
+        seg2_path = (save_path / f"{Path(row['path']).stem}_{i}_2").with_suffix(".opus")
+        audio1.export(seg1_path, format="opus")
+        audio2.export(seg2_path, format="opus")
     return row
 
 
