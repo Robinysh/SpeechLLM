@@ -31,8 +31,11 @@ def print_row(row):
 )
 @click.option("--data_path", default="./data/GigaSpeech/download/S")
 @click.option("--subset", default="{S}")
-def main(data_path, output_path, subset):
-    gigaspeech = list(GigaSpeech(data_path).audios(subset))
+@click.option("--nnodes", default=1)
+@click.option("--node_id", default=0)
+def main(data_path, output_path, subset, nnodes, node_id):
+    gigaspeech = GigaSpeech(data_path).audios(subset)
+    gigaspeech = [x for i, x in enumerate(gigaspeech) if i % nnodes == node_id]
     # pyarrow is quite restrictive in terms of what it can serialize
     # so we have to transform some fields
     for row in gigaspeech:
@@ -57,8 +60,8 @@ def main(data_path, output_path, subset):
     # ds = ds.map(AudioEnhancer, num_gpus=1, concurrency=1)
     # ds = ds.map(generate_hubert_embs)
     # write metadata.tsv
-    # ds = ds.map(Diarizer, concurrency=4, num_gpus=0.25)
-    ds = ds.map(DialogueFilter, concurrency=2)
+    # ds = ds.map(Diarizer, concurrency=8,  num_gpus=0.5)
+    ds = ds.map(DialogueFilter, concurrency=4)
     ds = ds.map(split_dialogues)
     ds.materialize()
 
