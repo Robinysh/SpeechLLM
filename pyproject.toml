@@ -15,8 +15,7 @@ dependencies = [
     "autoflake>=2.2.1",
     "pylint>=3.0.3",
     "transformers>=4.36.2",
-    "torch>=2.1.1",
-    "torchaudio>=2.1.1",
+    "torch==2.2.1",
     "tiktoken>=0.5.2",
     "matplotlib>=3.8.1",
     "einops>=0.7.0",
@@ -44,7 +43,9 @@ dependencies = [
     "pyannote-audio>=3.1.1",
     "openai>=1.13.3",
     "py-cpuinfo>=9.0.0",
-    "vllm==0.4.0",
+    "torchaudio==2.2.1",
+    "static-ffmpeg>=2.5",
+    "vllm>=0.4.1",
 ]
 requires-python = ">=3.10"
 readme = "README.md"
@@ -73,7 +74,7 @@ start.shell = "if [ -e .env ]; then pdm run lightning_trainer; else echo 'Make a
 data-generate.env_file=".env"
 data-generate.shell = "pdm run python src/speechllm/data_generation/main.py"
 pre_install.shell = "export CMAKE_ARGS='-DLLAMA_CUBLAS=on' FORCE_CMAKE=1"
-llm_server.shell = " pdm run python -m vllm.entrypoints.openai.api_server --model TheBloke/Mixtral_11Bx2_MoE_19B-AWQ --quantization awq"
+llm_server.shell = "python -m vllm.entrypoints.openai.api_server --model astronomer/Llama-3-8B-Instruct-GPTQ-8-Bit --gpu-memory-utilization 0.8 --dtype=half"
 
 [tool.pdm.options]
 sync = ["--no-isolation"]
