@@ -1,7 +1,6 @@
 import numpy as np
-from lightningtools import reporter
-
 import wandb
+from lightningtools import reporter
 
 
 def save_figure_to_numpy(fig, spectrogram=False):

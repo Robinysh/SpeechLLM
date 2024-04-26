@@ -20,6 +20,8 @@ from resemble_enhance.enhancer.inference import enhance, load_enhancer
 
 from speechllm.data_generation.speechcolab.datasets.gigaspeech import GigaSpeech
 
+DIALOGUE_PAIR_DIR = "dialogue_pairs_llama3"
+AUDIO_PAIR_DIR = "audio_pairs_llama3"
 
 def rename_cols(row):
     row["id"] = row.pop("ID")
@@ -102,10 +104,6 @@ class Downloader:
         return row
 
 
-# from ray.util import inspect_serializabilit4
-# inspect_serializability(download_audio, name="test")
-
-
 class Diarizer:
     def __init__(self):
         self.pipeline = Pipeline.from_pretrained(
@@ -116,41 +114,55 @@ class Diarizer:
 
     def __call__(self, row):
         # fname = Path(row['data_path'])/'enhanced'/Path(row['path']).with_suffix('.flac').name
-        fname = Path(row["data_path"]) / Path(row["path"])
-        waveform, sample_rate = torchaudio.load(fname)
-        diarization = self.pipeline({"waveform": waveform, "sample_rate": sample_rate})
-        save_path = (
-            Path(row["data_path"])
-            / "diarization"
-            / Path(row["path"]).with_suffix(".pkl").name
-        )
-        save_path.parent.mkdir(parents=True, exist_ok=True)
-        with save_path.open("wb") as fp:
-            pickle.dump(diarization, fp)
+        try:
+            fname = Path(row["data_path"]) / Path(row["path"])
+            waveform, sample_rate = torchaudio.load(fname)
+            save_path = (
+                Path(row["data_path"])
+                / "diarization"
+                / Path(row["path"]).with_suffix(".pkl").name
+            )
+            save_path.parent.mkdir(parents=True, exist_ok=True)
+            if save_path.exists():
+                return row
+
+            diarization = self.pipeline(
+                {"waveform": waveform, "sample_rate": sample_rate}
+            )
+            with save_path.open("wb") as fp:
+                pickle.dump(diarization, fp)
+        except Exception as e:
+            print(f"Error: {row}")
+            print(e)
         return row
 
 
 def split_dialogues(row):
-    dialogue_path = (
-        Path(row["data_path"]) / "dialogue_pairs" / Path(row["path"]).stem
-    ).with_suffix(".json")
-    if not dialogue_path.exists():
-        return row
-    dialogue_data = json.loads(dialogue_path.read_text())
-    if len(dialogue_data) == 0:
-        return row
+    try:
+        dialogue_path = (
+            Path(row["data_path"]) / DIALOGUE_PAIR_DIR / Path(row["path"]).stem
+        ).with_suffix(".json")
+        if not dialogue_path.exists():
+            return row
+        dialogue_data = json.loads(dialogue_path.read_text())
+        if len(dialogue_data) == 0:
+            return row
 
-    save_path = Path(row["data_path"]) / "audio_pairs" / Path(row["path"]).stem
-    save_path.mkdir(parents=True, exist_ok=True)
-
-    audio = AudioSegment.from_file(Path(row["data_path"]) / row["path"])
-    for i, (seg1, seg2) in enumerate(dialogue_data):
-        audio1 = audio[seg1["begin_time"] * 1000 : seg1["end_time"] * 1000]
-        audio2 = audio[seg2["begin_time"] * 1000 : seg2["end_time"] * 1000]
-        seg1_path = (save_path / f"{Path(row['path']).stem}_{i}_1").with_suffix(".opus")
-        seg2_path = (save_path / f"{Path(row['path']).stem}_{i}_2").with_suffix(".opus")
-        audio1.export(seg1_path, format="opus")
-        audio2.export(seg2_path, format="opus")
+        save_path = Path(row["data_path"]) / AUDIO_PAIR_DIR / Path(row["path"]).stem
+        if save_path.exists():
+            return row
+        save_path.mkdir(parents=True, exist_ok=True)
+        audio = AudioSegment.from_file(Path(row["data_path"]) / row["path"])
+        for i, (seg1, seg2) in enumerate(dialogue_data):
+            audio1 = audio[seg1["begin_time"] * 1000 : seg1["end_time"] * 1000]
+            audio2 = audio[seg2["begin_time"] * 1000 : seg2["end_time"] * 1000]
+            seg1_path = (save_path / f"{Path(row['path']).stem}_{i}_1").with_suffix(".opus")
+            seg2_path = (save_path / f"{Path(row['path']).stem}_{i}_2").with_suffix(".opus")
+            audio1.export(seg1_path, format="opus")
+            audio2.export(seg2_path, format="opus")
+    except Exception as e:
+        print(row)
+        print(e)
     return row
 
 
@@ -165,7 +177,9 @@ class DialogueFilter:
 
     def query_llm(self, query):
         # model="heyholetsgo/Nous-Hermes-2-Mistral-7B-DPO-AWQ"
-        model = "TheBloke/Mixtral_11Bx2_MoE_19B-AWQ"
+        #model = "TheBloke/Mixtral_11Bx2_MoE_19B-GPTQ"
+        #model="casperhansen/llama-3-8b-instruct-awq"
+        model="astronomer/Llama-3-8B-Instruct-GPTQ-8-Bit"
         # model="TheBloke/SauerkrautLM-UNA-SOLAR-Instruct-AWQ"
         # model="TheBloke/mistral-ft-optimized-1218-AWQ"
         # model="TheBloke/mistral-ft-optimized-1227-AWQ"
@@ -186,60 +200,106 @@ class DialogueFilter:
         return response
 
     def check_is_response(self, sent1, sent2, retries=3):
-        for _ in range(retries):
-            response = self.query_llm(
-                f"""<s>[INST]
-            The following sentences happens sequentially in a dialogue.
-            Is the second sentence a response to the first sentence from another speaker that is likely to happen in a daily casual chatting?
-            A mere continuation of the first sentence does not count as a response.
-            Give an explanation and response yes or no. Answer no if you are unsure. Follow this format of the examples strictly.
+        for i in range(retries):
+            #response = self.query_llm(
+            #    f"""<s>[INST]
+            #The following sentences happens sequentially in a dialogue.
+            #Is the second sentence a response to the first sentence from another speaker that is likely to happen in a daily casual chatting?
+            #A mere continuation of the first sentence does not count as a response.
+            #Give an explanation and response yes or no. Answer no if you are unsure. Follow the format of the examples strictly.
 
-            For example:
-            1. ITEMIZED .
-            2. SEARS ACTUALLY PROVIDED AN ENTIRELY SEPARATE CATALOG FOR THESE KIT .
-            Explanation: [/INST]It is unclear what is the first sentence is about.
-            Answer: no[INST]
+            #For example:
+            #1. ITEMIZED .
+            #2. SEARS ACTUALLY PROVIDED AN ENTIRELY SEPARATE CATALOG FOR THESE KIT .
+            #Explanation: [/INST]It is unclear what is the first sentence is about.
+            #Answer: no[INST]
 
-            1. AT 7:45 ?
-            2. MHMM .
-            Explanation: [/INST]The second sentence is directly answering the first sentence. It is also likely to be said by another speaker.
-            Answer: yes[INST]
+            #1. AT 7:45 .
+            #2. MHMM .
+            #Explanation: [/INST]The second sentence is directly answering the first sentence. It is also likely to be said by another speaker.
+            #Answer: yes[INST]
 
-            1. IN SOME NEIGHBORHOODS , A SEARS KIT HOME MIGHT BE THE ONLY HOUSE ON THE BLOCK WITH ELECTRICITY .
-            2. MEN AND WOMEN OF COLOR , AND SINGLE WOMEN WHO WOULD OTHERWISE NEVER HAVE A CHANCE OF BECOMING A HOMEOWNER
-            Explanation: [/INST]The second sentence is merely a continuation of the first sentence.
-            Answer: no[INST]
+            #1. IN SOME NEIGHBORHOODS , A SEARS KIT HOME MIGHT BE THE ONLY HOUSE ON THE BLOCK WITH ELECTRICITY .
+            #2. MEN AND WOMEN OF COLOR , AND SINGLE WOMEN WHO WOULD OTHERWISE NEVER HAVE A CHANCE OF BECOMING A HOMEOWNER
+            #Explanation: [/INST]The second sentence is merely a continuation of the first sentence.
+            #Answer: no[INST]
 
-            1. MINE IS A LONG AND A SAD TALE !
-            2. SAID THE MOUSE , TURNING TO ALICE , AND SIGHING .
-            Explanation: [/INST]Although they are from different speakers, the second sentence is not a response, but a narration. A response is also unlikely to start with the word 'SAID'.
-            Answer: no[INST]
+            #1. I NEED TO TRAVEL IN MAY .
+            #2. AND , WHAT DAY IN MAY DID YOU WANT TO TRAVEL .
+            #Explanation: [/INST]The second sentence is asking for additional information from the first sentence.
+            #Answer: yes[INST]
 
-            1. {sent1}
-            2. {sent2}
-            Explanation: [/INST]
-            """
-            )
-            ans_sent = re.findall("(?<=[Aa]nswer:).*$", response, re.MULTILINE)
-            if len(ans_sent) > 0:
-                ans_sent = ans_sent[-1]
-                answer = any(x in ans_sent for x in ["yes", "Yes", "YES"])
-                ic(response, ans_sent, sent1, sent2, answer)
-                return answer
+            #1. MINE IS A LONG AND A SAD TALE !
+            #2. SAID THE MOUSE , TURNING TO ALICE , AND SIGHING .
+            #Explanation: [/INST]Although they are from different speakers, the second sentence is not a response, but a narration. A response is also unlikely to start with the word 'SAID'.
+            #Answer: no[INST]
+
+            #1. {sent1}
+            #2. {sent2}
+            #Explanation: [/INST]
+            #"""
+            #)
+            try:
+                response = self.query_llm(f'''
+                The following sentences happens sequentially in a dialogue.
+                Is the second sentence a response to the first sentence from another speaker that is likely to happen in a daily casual chatting?
+                A mere continuation of the first sentence does not count as a response.
+                Give an explanation and response yes or no. Answer no if you are unsure. Follow this format of the examples strictly.
+                        
+                For example:
+                1. ITEMIZED .
+                2. SEARS ACTUALLY PROVIDED AN ENTIRELY SEPARATE CATALOG FOR THESE KIT .
+                Explanation: It is unclear what is the first sentence is about.
+                Answer: no
+
+                1. AT 7:45 ?
+                2. MHMM .
+                Explanation: The second sentence is directly answering the first sentence. It is also likely to be said by another speaker.
+                Answer: yes
+                    
+                1. IN SOME NEIGHBORHOODS , A SEARS KIT HOME MIGHT BE THE ONLY HOUSE ON THE BLOCK WITH ELECTRICITY .
+                2. MEN AND WOMEN OF COLOR , AND SINGLE WOMEN WHO WOULD OTHERWISE NEVER HAVE A CHANCE OF BECOMING A HOMEOWNER
+                Explanation: The second sentence is merely a continuation of the first sentence.
+                Answer: no
+
+                1. MINE IS A LONG AND A SAD TALE !
+                2. SAID THE MOUSE , TURNING TO ALICE , AND SIGHING .
+                Explanation: Although they are from different speakers, the second sentence is not a response, but a narration. A response is also unlikely to start with the word 'SAID'.
+                Answer: no
+                                                        
+                Now give your answer to these two sentences:
+                1. {sent1}
+                2. {sent2}
+                ''')
+                ans_sent = re.findall("(?<=[Aa]nswer:).*$", response, re.MULTILINE)
+                if len(ans_sent) > 0:
+                    ans_sent = ans_sent[-1]
+                    answer = any(x in ans_sent for x in ["yes", "Yes", "YES"])
+                    # ic(response, ans_sent, sent1, sent2, answer)
+                    return answer
+            except Exception as e:
+                print(f'Error at iter {i} for {sent1}, {sent2}')
+                print(e)
         return False
 
     # pylint: disable=too-many-branches,too-many-locals
     def __call__(self, row):  # noqa: C901
         pairs = []
         save_path = (
-            Path(row["data_path"]) / "diarization" / Path(row["path"]).name
-        ).with_suffix(".pkl")
-        if not save_path.exists():
+            Path(row["data_path"]) / DIALOGUE_PAIR_DIR / Path(row["path"]).name
+        ).with_suffix(".json")
+        if save_path.exists():
             return row
 
-        with save_path.open("rb") as fp:
+        diarization_path = (
+            Path(row["data_path"]) / "diarization" / Path(row["path"]).name
+        ).with_suffix(".pkl")
+        if not diarization_path.exists():
+            return row
+
+        with diarization_path.open("rb") as fp:
             diarization = pickle.load(fp)
-        ic(row["segments"])
+        #ic(row["segments"])
         segments = [dict(zip(x, y)) for x, y in row["segments"]]
 
         for seg in segments:
@@ -328,9 +388,6 @@ class DialogueFilter:
                 ]
             )
 
-        save_path = (
-            Path(row["data_path"]) / "dialogue_pairs" / Path(row["path"]).name
-        ).with_suffix(".json")
         save_path.parent.mkdir(exist_ok=True, parents=True)
         with save_path.open("w") as out_file:
             json.dump(pairs, out_file, sort_keys=True, indent=4, ensure_ascii=False)
