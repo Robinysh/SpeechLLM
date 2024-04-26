@@ -23,6 +23,7 @@ from speechllm.data_generation.speechcolab.datasets.gigaspeech import GigaSpeech
 DIALOGUE_PAIR_DIR = "dialogue_pairs_llama3"
 AUDIO_PAIR_DIR = "audio_pairs_llama3"
 
+
 def rename_cols(row):
     row["id"] = row.pop("ID")
     row["fpath"] = Path(row.pop("AUDIO"))
@@ -131,6 +132,7 @@ class Diarizer:
             )
             with save_path.open("wb") as fp:
                 pickle.dump(diarization, fp)
+        # pylint: disable=broad-except
         except Exception as e:
             print(f"Error: {row}")
             print(e)
@@ -156,10 +158,15 @@ def split_dialogues(row):
         for i, (seg1, seg2) in enumerate(dialogue_data):
             audio1 = audio[seg1["begin_time"] * 1000 : seg1["end_time"] * 1000]
             audio2 = audio[seg2["begin_time"] * 1000 : seg2["end_time"] * 1000]
-            seg1_path = (save_path / f"{Path(row['path']).stem}_{i}_1").with_suffix(".opus")
-            seg2_path = (save_path / f"{Path(row['path']).stem}_{i}_2").with_suffix(".opus")
+            seg1_path = (save_path / f"{Path(row['path']).stem}_{i}_1").with_suffix(
+                ".opus"
+            )
+            seg2_path = (save_path / f"{Path(row['path']).stem}_{i}_2").with_suffix(
+                ".opus"
+            )
             audio1.export(seg1_path, format="opus")
             audio2.export(seg2_path, format="opus")
+    # pylint: disable=broad-except
     except Exception as e:
         print(row)
         print(e)
@@ -177,9 +184,9 @@ class DialogueFilter:
 
     def query_llm(self, query):
         # model="heyholetsgo/Nous-Hermes-2-Mistral-7B-DPO-AWQ"
-        #model = "TheBloke/Mixtral_11Bx2_MoE_19B-GPTQ"
-        #model="casperhansen/llama-3-8b-instruct-awq"
-        model="astronomer/Llama-3-8B-Instruct-GPTQ-8-Bit"
+        # model = "TheBloke/Mixtral_11Bx2_MoE_19B-GPTQ"
+        # model="casperhansen/llama-3-8b-instruct-awq"
+        model = "astronomer/Llama-3-8B-Instruct-GPTQ-8-Bit"
         # model="TheBloke/SauerkrautLM-UNA-SOLAR-Instruct-AWQ"
         # model="TheBloke/mistral-ft-optimized-1218-AWQ"
         # model="TheBloke/mistral-ft-optimized-1227-AWQ"
@@ -201,51 +208,52 @@ class DialogueFilter:
 
     def check_is_response(self, sent1, sent2, retries=3):
         for i in range(retries):
-            #response = self.query_llm(
+            # response = self.query_llm(
             #    f"""<s>[INST]
-            #The following sentences happens sequentially in a dialogue.
-            #Is the second sentence a response to the first sentence from another speaker that is likely to happen in a daily casual chatting?
-            #A mere continuation of the first sentence does not count as a response.
-            #Give an explanation and response yes or no. Answer no if you are unsure. Follow the format of the examples strictly.
+            # The following sentences happens sequentially in a dialogue.
+            # Is the second sentence a response to the first sentence from another speaker that is likely to happen in a daily casual chatting?
+            # A mere continuation of the first sentence does not count as a response.
+            # Give an explanation and response yes or no. Answer no if you are unsure. Follow the format of the examples strictly.
 
-            #For example:
-            #1. ITEMIZED .
-            #2. SEARS ACTUALLY PROVIDED AN ENTIRELY SEPARATE CATALOG FOR THESE KIT .
-            #Explanation: [/INST]It is unclear what is the first sentence is about.
-            #Answer: no[INST]
+            # For example:
+            # 1. ITEMIZED .
+            # 2. SEARS ACTUALLY PROVIDED AN ENTIRELY SEPARATE CATALOG FOR THESE KIT .
+            # Explanation: [/INST]It is unclear what is the first sentence is about.
+            # Answer: no[INST]
 
-            #1. AT 7:45 .
-            #2. MHMM .
-            #Explanation: [/INST]The second sentence is directly answering the first sentence. It is also likely to be said by another speaker.
-            #Answer: yes[INST]
+            # 1. AT 7:45 .
+            # 2. MHMM .
+            # Explanation: [/INST]The second sentence is directly answering the first sentence. It is also likely to be said by another speaker.
+            # Answer: yes[INST]
 
-            #1. IN SOME NEIGHBORHOODS , A SEARS KIT HOME MIGHT BE THE ONLY HOUSE ON THE BLOCK WITH ELECTRICITY .
-            #2. MEN AND WOMEN OF COLOR , AND SINGLE WOMEN WHO WOULD OTHERWISE NEVER HAVE A CHANCE OF BECOMING A HOMEOWNER
-            #Explanation: [/INST]The second sentence is merely a continuation of the first sentence.
-            #Answer: no[INST]
+            # 1. IN SOME NEIGHBORHOODS , A SEARS KIT HOME MIGHT BE THE ONLY HOUSE ON THE BLOCK WITH ELECTRICITY .
+            # 2. MEN AND WOMEN OF COLOR , AND SINGLE WOMEN WHO WOULD OTHERWISE NEVER HAVE A CHANCE OF BECOMING A HOMEOWNER
+            # Explanation: [/INST]The second sentence is merely a continuation of the first sentence.
+            # Answer: no[INST]
 
-            #1. I NEED TO TRAVEL IN MAY .
-            #2. AND , WHAT DAY IN MAY DID YOU WANT TO TRAVEL .
-            #Explanation: [/INST]The second sentence is asking for additional information from the first sentence.
-            #Answer: yes[INST]
+            # 1. I NEED TO TRAVEL IN MAY .
+            # 2. AND , WHAT DAY IN MAY DID YOU WANT TO TRAVEL .
+            # Explanation: [/INST]The second sentence is asking for additional information from the first sentence.
+            # Answer: yes[INST]
 
-            #1. MINE IS A LONG AND A SAD TALE !
-            #2. SAID THE MOUSE , TURNING TO ALICE , AND SIGHING .
-            #Explanation: [/INST]Although they are from different speakers, the second sentence is not a response, but a narration. A response is also unlikely to start with the word 'SAID'.
-            #Answer: no[INST]
+            # 1. MINE IS A LONG AND A SAD TALE !
+            # 2. SAID THE MOUSE , TURNING TO ALICE , AND SIGHING .
+            # Explanation: [/INST]Although they are from different speakers, the second sentence is not a response, but a narration. A response is also unlikely to start with the word 'SAID'.
+            # Answer: no[INST]
 
-            #1. {sent1}
-            #2. {sent2}
-            #Explanation: [/INST]
-            #"""
-            #)
+            # 1. {sent1}
+            # 2. {sent2}
+            # Explanation: [/INST]
+            # """
+            # )
             try:
-                response = self.query_llm(f'''
+                response = self.query_llm(
+                    f"""
                 The following sentences happens sequentially in a dialogue.
                 Is the second sentence a response to the first sentence from another speaker that is likely to happen in a daily casual chatting?
                 A mere continuation of the first sentence does not count as a response.
                 Give an explanation and response yes or no. Answer no if you are unsure. Follow this format of the examples strictly.
-                        
+
                 For example:
                 1. ITEMIZED .
                 2. SEARS ACTUALLY PROVIDED AN ENTIRELY SEPARATE CATALOG FOR THESE KIT .
@@ -256,7 +264,7 @@ class DialogueFilter:
                 2. MHMM .
                 Explanation: The second sentence is directly answering the first sentence. It is also likely to be said by another speaker.
                 Answer: yes
-                    
+
                 1. IN SOME NEIGHBORHOODS , A SEARS KIT HOME MIGHT BE THE ONLY HOUSE ON THE BLOCK WITH ELECTRICITY .
                 2. MEN AND WOMEN OF COLOR , AND SINGLE WOMEN WHO WOULD OTHERWISE NEVER HAVE A CHANCE OF BECOMING A HOMEOWNER
                 Explanation: The second sentence is merely a continuation of the first sentence.
@@ -266,19 +274,21 @@ class DialogueFilter:
                 2. SAID THE MOUSE , TURNING TO ALICE , AND SIGHING .
                 Explanation: Although they are from different speakers, the second sentence is not a response, but a narration. A response is also unlikely to start with the word 'SAID'.
                 Answer: no
-                                                        
+
                 Now give your answer to these two sentences:
                 1. {sent1}
                 2. {sent2}
-                ''')
+                """
+                )
                 ans_sent = re.findall("(?<=[Aa]nswer:).*$", response, re.MULTILINE)
                 if len(ans_sent) > 0:
                     ans_sent = ans_sent[-1]
                     answer = any(x in ans_sent for x in ["yes", "Yes", "YES"])
                     # ic(response, ans_sent, sent1, sent2, answer)
                     return answer
+            # pylint: disable=broad-except
             except Exception as e:
-                print(f'Error at iter {i} for {sent1}, {sent2}')
+                print(f"Error at iter {i} for {sent1}, {sent2}")
                 print(e)
         return False
 
@@ -299,7 +309,7 @@ class DialogueFilter:
 
         with diarization_path.open("rb") as fp:
             diarization = pickle.load(fp)
-        #ic(row["segments"])
+        # ic(row["segments"])
         segments = [dict(zip(x, y)) for x, y in row["segments"]]
 
         for seg in segments:
