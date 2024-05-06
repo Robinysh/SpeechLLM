@@ -1,0 +1,215 @@
+# pylint: skip-file
+import re
+import tarfile
+import zlib
+from hashlib import pbkdf2_hmac
+from pathlib import Path
+
+import ijson
+import yaml
+from Crypto.Cipher import AES
+
+from ..utils.download import download, file_md5
+
+url_of_host = {
+    "oss": "oss://speechcolab/GigaSpeech/release/GigaSpeech",
+    "tsinghua": "http://aidata.tsinghua-ieit.com/GigaSpeech",
+    "speechocean": "ftp://GigaSpeech:<PASSWORD>@124.207.81.184:21/GigaSpeech",
+    "magicdata": "https://freedata.oss-cn-beijing.aliyuncs.com/magichub/GigaSpeech",
+}
+
+allowed_subsets = ("{XS}", "{S}", "{M}", "{L}", "{XL}", "{DEV}", "{TEST}")
+
+
+class GigaSpeech(object):
+    def __init__(self, path="."):
+        self.gigaspeech_dataset_dir = Path(path)
+        self.json_path = self.gigaspeech_dataset_dir / "GigaSpeech.json"
+        self.gigaspeech_release_url = ""
+        self.password = ""
+        self.audios_in_subset = set()
+        self.chunk_size = 40960
+
+    def download(self, password, subset="{XL}", host="tsinghua", with_dict=False):
+        """
+        Download and extract the dataset files.
+
+        :param password: string, the password issued by GigaSpeech.
+        :param subset: string, the subset name.
+        :param host: string, hostname, which should be in ('tsinghua', 'speechocean', 'magicdata').
+        :param with_dict: bool, whether to download the dict.
+        """
+        assert subset in allowed_subsets, f"subset {subset} not in {allowed_subsets}"
+
+        if host not in url_of_host:
+            raise NotImplementedError(f"Unknown host: {host}")
+        self.gigaspeech_release_url = url_of_host[host].replace(
+            "<PASSWORD>", password.replace("/", "<SLASH>")
+        )
+
+        if self.gigaspeech_release_url.startswith("oss:"):
+            raise NotImplementedError(
+                "For downloading from OSS, please use: "
+                "github.com/SpeechColab/GigaSpeech/blob/main/utils/download_gigaspeech.sh"
+            )
+
+        self.password = password
+
+        # User agreement
+        self.gigaspeech_dataset_dir.mkdir(parents=True, exist_ok=True)
+        access_term_path = self.gigaspeech_dataset_dir / "TERMS_OF_ACCESS"
+        download(access_term_path, f"{self.gigaspeech_release_url}/TERMS_OF_ACCESS")
+        print(
+            "\033[0;32m"
+            + "\nBY PROCEEDING YOU AGREE TO THE FOLLOWING GIGASPEECH TERMS OF ACCESS:\n"
+        )
+        with open(access_term_path, "r") as f:
+            print(f.read())
+        print("\033[0m")  # clear the color
+        # print('GigaSpeech downloading will start in 5 seconds')
+        # for t in range(5, 0, -1):
+        #    print(t)
+        #    time.sleep(1)
+
+        # Download the file list
+        print("Start to download files.yaml")
+        filelist_path = self.gigaspeech_dataset_dir / "files.yaml"
+        download(filelist_path, f"{self.gigaspeech_release_url}/files.yaml")
+        with open(filelist_path) as f:
+            aes_list = yaml.load(f, Loader=yaml.FullLoader)
+
+        def prepare_objects_from_release(category):
+            assert category in aes_list, f"No entry for {category} found in files.yaml"
+            for path in aes_list[category]:
+                if (
+                    path.startswith("audio")
+                    and re.sub(r"\.tgz.*", "", path) not in self.audios_in_subset
+                ):
+                    continue
+                self.download_and_process_object_from_release(
+                    aes_list[category][path], path
+                )
+
+        # Download metadata
+        print("Start to download GigaSpeech metadata")
+        prepare_objects_from_release("metadata")
+
+        # Decide which audios need to be downloaded
+        with open(self.json_path, "rb") as f:
+            for audio in ijson.items(f, "audios.item"):
+                if subset in audio["subsets"]:
+                    self.audios_in_subset.add(f'{Path(audio["path"]).parent}')
+
+        # Download audio
+        for audio_source in ("youtube", "podcast"):
+            prepare_objects_from_release(audio_source)
+
+        # Download optional dictionary & pretrained g2p model
+        if with_dict:
+            prepare_objects_from_release("dict")
+
+    def download_and_process_object_from_release(self, remote_md5, obj):  # noqa: C901
+        # Download the aes files
+        remote_obj = f"{self.gigaspeech_release_url}/{obj}"
+        local_obj = self.gigaspeech_dataset_dir / obj
+        need_download = True
+        if local_obj.exists():
+            # if file_md5(local_obj) == remote_md5:
+            if True:
+                print(f"Skipping {local_obj}, successfully retrieved already.")
+                return
+                need_download = False
+            else:
+                print(f"{local_obj} corrupted or out-of-date, start to re-download.")
+
+        retry_count = 3
+        while need_download and retry_count > 0:
+            local_obj.parent.mkdir(parents=True, exist_ok=True)
+            remote_obj_for_print = re.sub(r"//.*@", "//", remote_obj)
+            print(f"Downloading from {remote_obj_for_print}")
+            download(local_obj, remote_obj, show_progress_bar=True)
+
+            # Check md5 of the written file
+            if file_md5(local_obj) == remote_md5:
+                print(f"Successfully verified md5 for {local_obj}")
+                need_download = False
+            else:
+                print(
+                    f"{local_obj} expects md5={remote_md5}, got {file_md5(local_obj)}, try downloading"
+                )
+                retry_count -= 1
+            if retry_count <= 0:
+                raise ConnectionError(
+                    f"Can not retrive the correct file {remote_obj} with md5 {remote_md5}"
+                )
+
+        # Decrypt and save to file
+        local_obj_dec = local_obj.parent / Path(local_obj.stem.strip(".aes"))
+        with open(local_obj, "rb") as f_in, open(local_obj_dec, "wb") as f_out:
+            bs = AES.block_size
+            salt = f_in.read(bs)[len("Salted__") :]
+            key_length = 32
+            d = pbkdf2_hmac(
+                "sha256", self.password.encode(), salt, 10000, key_length + bs
+            )
+            key, iv = d[:key_length], d[key_length : key_length + bs]
+            cipher = AES.new(key, AES.MODE_CBC, iv)
+            while True:
+                chunk = f_in.read(self.chunk_size)
+                if not chunk:
+                    break
+                f_out.write(cipher.decrypt(chunk))
+
+        # Write the decompressed files
+        if local_obj_dec.suffix == ".tgz":
+            # encrypted-gziped-tarball contains contents of a GigaSpeech sub-directory
+            subdir = local_obj_dec.parent / Path(local_obj_dec.stem.strip(".tgz"))
+            subdir.mkdir(parents=True, exist_ok=True)
+            with tarfile.open(local_obj_dec) as tar:
+                tar.extractall(path=subdir)
+        elif local_obj_dec.suffix == ".gz":
+            # encripted-gziped object represents a regular GigaSpeech file
+            out_path = local_obj_dec.parent / Path(local_obj_dec.stem.strip(".gz"))
+            z = zlib.decompressobj(zlib.MAX_WBITS | 16)
+            with open(local_obj_dec, "rb") as f_in, open(out_path, "wb") as f_out:
+                while True:
+                    chunk = f_in.read(self.chunk_size)
+                    if not chunk:
+                        break
+                    f_out.write(z.decompress(chunk))
+        else:
+            # keep the object as it is
+            pass
+
+    def audios(self, subset="{XL}"):
+        """
+        Parses the JSON file "GigaSpeech.json" and yield the metadata of the audios.
+        The library `ijson` parses big JSONs iteratively.
+
+        :param subset: string, the subset name.
+        :return: a generator of the audio metadata.
+        """
+        assert subset in allowed_subsets, f"subset {subset} not in {allowed_subsets}"
+
+        with open(
+            self.json_path, "rb"
+        ) as f:  # open in binary mode to make `ijson` happy
+            audios = ijson.items(f, "audios.item")
+            for audio in audios:
+                if subset in audio["subsets"]:
+                    # We are filtering out the segments that do not belong to the requested subset
+                    audio["segments"] = [
+                        s for s in audio["segments"] if subset in s["subsets"]
+                    ]
+                    yield audio
+
+    def segments(self, subset="{XL}"):
+        """
+        The generator of the segment metadata.
+
+        :param subset: string, the subset name.
+        :return: a generator of the segment metadata.
+        """
+        for audio in self.audios(subset):
+            for segment in audio["segments"]:
+                yield segment
