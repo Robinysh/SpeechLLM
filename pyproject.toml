@@ -15,7 +15,7 @@ dependencies = [
     "autoflake>=2.2.1",
     "pylint>=3.0.3",
     "transformers>=4.36.2",
-    "torch==2.2.1",
+    "torch>=2.2.1",
     "tiktoken>=0.5.2",
     "matplotlib>=3.8.1",
     "einops>=0.7.0",
@@ -43,7 +43,7 @@ dependencies = [
     "pyannote-audio>=3.1.1",
     "openai>=1.13.3",
     "py-cpuinfo>=9.0.0",
-    "torchaudio==2.2.1",
+    "torchaudio>=2.2.1",
     "static-ffmpeg>=2.5",
     "vllm>=0.4.1",
 ]
