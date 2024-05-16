@@ -1,0 +1,5 @@
+_target_: lightning.pytorch.loggers.WandbLogger
+id: ${project_name}
+name: ${project_name}
+project: ${project_name}
+resume: "auto"

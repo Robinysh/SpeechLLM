@@ -1,6 +1,5 @@
 from pathlib import Path
 
-import torch
 import torchaudio
 
 # pylint: disable-next=no-name-in-module
@@ -24,14 +23,6 @@ def load_audio(row):
     if sr != 16000:
         ratio = 16000 / sr
         row["audio"] = resample(row["audio"], ratio, "sinc_fastest")
-    return row
-
-
-def load_hubert(row):
-    fpath = Path(row["hubert"]) / Path(*Path(row["fpath"]).parts[-2:]).with_suffix(
-        ".pt"
-    )
-    row["hubert_embs"] = torch.load(fpath)
     return row
 
 

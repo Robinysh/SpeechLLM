@@ -1,0 +1,7 @@
+_target_: speechllm.trainer.Model
+gradient_clip_val: 1500000
+lossfuncs: ${losses}
+model: ${model}
+optimizer_order:
+  - default
+train_stage: ${train_stage}

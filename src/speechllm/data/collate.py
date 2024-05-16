@@ -27,6 +27,10 @@ def to_list_of_tensor(x):
     return [torch.Tensor(i) for i in x]
 
 
+def dict_list_to_list_dict(x):
+    return {k: [dic[k] for dic in x] for k in x[0]}
+
+
 def collate(row, tokenizer):
     """
     audio_lens = [len(row) for row in rows["audio"]]
@@ -69,6 +73,6 @@ def collate(row, tokenizer):
         "raw_tokens": rows["raw_tokens"],
     }
     """
-    row = {k: [dic[k] for dic in row] for k in row[0]}
+    row = dict_list_to_list_dict(row)
     row["model_input"] = tokenize_func(row["prompt"], tokenizer)
     return row

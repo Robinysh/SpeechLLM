@@ -54,17 +54,6 @@ def hf_pipeline(
         cache_file_name=str(cache_dir / "template" / "train.arrow"),
     )
 
-    # Path(cache_dir / "tokenized").mkdir(parents=True, exist_ok=True)
-    # ds = ds.map(
-    #     lambda x: tokenize_func(x['prompt'], tokenizer),
-    #     batched=True,
-    #     num_proc=num_workers,
-    #     load_from_cache_file=False,
-    #     desc="Running tokenizer on dataset",
-    #     cache_file_name=str(cache_dir / "tokenized" / "train.arrow"),
-    # )
-
-    # ic(ds[0])
     # ds.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"])
     # ic(ds[0])
 
