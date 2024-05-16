@@ -5,9 +5,8 @@ import torchaudio
 
 # pylint: disable-next=no-name-in-module
 from samplerate2 import resample
-from transformers import AutoTokenizer
 
-from speechllm.utils.qwen_generation_utils import make_context
+from speechllm.data.utils import tokenize_func
 
 
 def rename_cols(row):
@@ -36,33 +35,6 @@ def load_hubert(row):
     return row
 
 
-# pylint: disable-next=too-few-public-methods
-class Tokenize:
-    def __init__(self):
-        pretrained_model_dir = "Qwen/Qwen-Audio-Chat"
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            pretrained_model_dir, use_fast=True, trust_remote_code=True
-        )
-
-    def __call__(self, row):
-        # system = "You are a helpful assistant."
-        query = self.tokenizer.from_list_format(
-            [
-                {"audio": str(row["fpath"])},
-            ]
-        )
-        raw_text, _, audio_info = make_context(
-            self.tokenizer, query, chat_format="chatml"
-        )
-        tokens = self.tokenizer(raw_text, audio_info=audio_info)
-        raw_tokens = self.tokenizer.tokenize(raw_text, audio_info=audio_info)
-        row |= tokens
-        row["raw_text"] = raw_text
-        row["raw_tokens"] = raw_tokens
-        row["audio_info"] = audio_info
-        return row
-
-
 def add_cols(row, cols):
     row |= cols
     return row
@@ -87,3 +59,49 @@ def filter_outputs(row):
     for key in gets:
         output[key] = row[key]
     return output
+
+
+def group_texts(examples, block_size=256):
+    result = {}
+    for k in examples.keys():
+        v = examples[k]
+        if k == "input_ids":
+            grouped_input_ids = []
+            current_chunk = []
+            current_length = 0
+            for ids in v:
+                if current_length + len(ids) > block_size:
+                    grouped_input_ids.append(current_chunk)
+                    current_chunk = []
+                    current_length = 0
+                current_chunk.extend(ids)
+                current_length += len(ids)
+            # Make sure the last chunk is added
+            if current_length > 0:
+                grouped_input_ids.append(current_chunk)
+            result[k] = grouped_input_ids
+    result["attention_mask"] = [[1 for _ in row] for row in result["input_ids"]]
+    result["labels"] = result["input_ids"].copy()
+    return result
+
+
+def template_and_tokenize(data, tokenizer, prompter):
+    prompt = prompter.generate_template(
+        data["input"],
+        data["output"],
+    )
+    return tokenize_func(prompt, tokenizer)
+
+
+def read_audio_tokens(data, root_fpath):
+    input_fpath = root_fpath / f'{data["text"]}_1.txt'
+    output_fpath = root_fpath / f'{data["text"]}_2.txt'
+
+    # TODO
+    # input_tokens = input_fpath.read_text()
+    # output_tokens = output_fpath.read_text()
+
+    input_tokens = str(input_fpath)
+    output_tokens = str(output_fpath)
+
+    return {"input_tokens": input_tokens, "output_tokens": output_tokens}

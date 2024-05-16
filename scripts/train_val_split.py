@@ -20,7 +20,9 @@ def main(fpath, train_portion, test_count):
     files = fpath.rglob("*.opus")
     files = [x.relative_to(fpath) for x in files]
     files = [
-        x.with_stem(re.sub("_\d$", "", x.stem)) for x in files if x.stem[-1] == "1"
+        x.with_stem(re.sub(r"_\d$", "", x.stem)).with_suffix("")
+        for x in files
+        if x.stem[-1] == "1"
     ]
     shuffle(files)
     if train_portion:
@@ -32,8 +34,8 @@ def main(fpath, train_portion, test_count):
         test_files = files[:test_count]
     else:
         raise ValueError("Either train_portion or test_count must be specified")
-    train_files = duplicate_pairs(train_files)
-    test_files = duplicate_pairs(test_files)
+    # train_files = duplicate_pairs(train_files)
+    # test_files = duplicate_pairs(test_files)
     train_files = sorted(train_files)
     test_files = sorted(test_files)
 

@@ -1,4 +1,3 @@
-batch_size: 2
 config_optimizers:
   default:
     decay_step: 105000
@@ -6,9 +5,9 @@ config_optimizers:
     warmup_step: 2000
     weight_decay: 0
 defaults:
-  - DataBase: default
+  - database: default
   - data_module: default
-  - model: qwen_lora
+  - model: anygpt
   - losses: default
   - callbacks: default
 last_ckpt: null

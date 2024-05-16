@@ -15,3 +15,7 @@ def cross_entropy_loss(hubert_preds, hubert_embs):
 def l2_loss(hubert_preds, hubert_embs):
     ic(hubert_embs.shape)
     return {"l2": F.mse_loss(hubert_preds, hubert_embs)}
+
+
+def anygpt_loss(lm_output):
+    return {"anygpt_loss": lm_output.loss}

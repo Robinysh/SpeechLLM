@@ -1,0 +1,10 @@
+train:
+  flac: /data3/public/GigaSpeech/processed/audio_pairs/
+  metadata: /data3/public/GigaSpeech/processed/train_files.txt
+  tokens: /data3/public/GigaSpeech/processed/tokens/
+  transcript: /data3/public/GigaSpeech/processed/dialogue_pairs/
+val:
+  flac: /data3/public/GigaSpeech/processed/audio_pairs/
+  metadata: /data3/public/GigaSpeech/processed/test_files.txt
+  tokens: /data3/public/GigaSpeech/processed/tokens/
+  transcript: /data3/public/GigaSpeech/processed/dialogue_pairs/

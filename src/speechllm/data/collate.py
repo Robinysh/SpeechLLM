@@ -1,5 +1,6 @@
 import torch
-from torch.nn.utils.rnn import pad_sequence
+
+from speechllm.data.utils import tokenize_func
 
 
 def reflective_pad_sequence(sequences, padding_value=0):
@@ -26,7 +27,8 @@ def to_list_of_tensor(x):
     return [torch.Tensor(i) for i in x]
 
 
-def collate(rows):
+def collate(row, tokenizer):
+    """
     audio_lens = [len(row) for row in rows["audio"]]
     audio = reflective_pad_sequence(rows["audio"])
 
@@ -66,3 +68,7 @@ def collate(rows):
         "raw_text": rows["raw_text"],
         "raw_tokens": rows["raw_tokens"],
     }
+    """
+    row = {k: [dic[k] for dic in row] for k in row[0]}
+    row["model_input"] = tokenize_func(row["prompt"], tokenizer)
+    return row

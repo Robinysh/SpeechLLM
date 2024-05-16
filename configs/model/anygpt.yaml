@@ -1,0 +1,14 @@
+inference_pipeline:
+  - fn: forward
+    module: anygpt
+modules:
+  anygpt:
+    _target_: speechllm.models.modules.anygpt.constructor
+param_group:
+  default:
+    - anygpt
+pipelines:
+  default:
+    default:
+      - fn: forward
+        module: anygpt

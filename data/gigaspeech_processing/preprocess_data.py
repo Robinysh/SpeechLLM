@@ -1,23 +1,15 @@
 import argparse
 import csv
 import os
-from functools import cache
 from pathlib import Path
 
 import soundfile as sf
 import torch
 import torchaudio
-from bark_hubert_quantizer.customtokenizer import CustomTokenizer
-from bark_hubert_quantizer.hubert_manager import HuBERTManager
-from bark_hubert_quantizer.pre_kmeans_hubert import CustomHubert
-from encodec.utils import convert_audio
 from resemble_enhance.enhancer.inference import enhance, load_enhancer
-from speechcolab.datasets.gigaspeech import GigaSpeech
 from tqdm import tqdm
 
-hubert_manager = HuBERTManager()
-#
-
+from speechllm.data_generation.speechcolab.datasets.gigaspeech import GigaSpeech
 
 gigaspeech_punctuations = {
     ("<COMMA>", ","),
@@ -133,54 +125,6 @@ def enhance_audio(audio, args):
     sf.write(save_path, wav, new_sr)
 
 
-@cache
-def load_hubert(model="quantifier_V1_hubert_base_ls960_23.pth", device="cuda"):
-    hubert_model = CustomHubert(
-        hubert_manager.make_sure_hubert_installed(), device=device
-    ).half()
-    tokenizer = (
-        CustomTokenizer.load_from_checkpoint(
-            hubert_manager.make_sure_tokenizer_installed(
-                model=model, local_file="tokenizer_large.pth"
-            )
-        )
-        .to(device)
-        .half()
-    )
-    return hubert_model, tokenizer
-
-
-def generate_hubert_semantics_emb(audio, segment, args, device="cuda"):
-    fpath = Path(args.dst_dir) / "splitted" / audio["aid"] / f"{segment['sid']}.flac"
-
-    if not fpath.exists():
-        print(f"{fpath} not found, skipping.")
-        return
-
-    save_path = (
-        Path(args.dst_dir)
-        / "hubert_tokens"
-        / audio["aid"]
-        / fpath.with_suffix(".pt").name
-    )
-    save_path.parent.mkdir(parents=True, exist_ok=True)
-    if save_path.exists():
-        print(f"{fpath} already converted with hubert.")
-        return
-
-    model, tokenizer = load_hubert(device=device)
-
-    # Load and pre-process the audio waveform
-    wav, sr = torchaudio.load(fpath)
-    wav = convert_audio(wav, sr, 16000, 1)
-    wav = wav.to(device).half()
-    semantic_vectors = model.forward(wav, input_sample_hz=16000)
-    semantic_tokens = tokenizer.get_token(semantic_vectors)
-    semantic_tokens = semantic_tokens.cpu()
-
-    torch.save(semantic_tokens, save_path)
-
-
 @torch.inference_mode()
 def process_audio(args):
     os.makedirs(args.dst_dir, exist_ok=True)
@@ -216,10 +160,6 @@ def process_audio(args):
 
         for utt in csv_rows:
             csv_writer.writerow(utt)
-
-    for audio in tqdm(gigaspeech.audios(subset), total=total_len):
-        for segment in audio["segments"]:
-            generate_hubert_semantics_emb(audio, segment, args)
 
 
 if __name__ == "__main__":

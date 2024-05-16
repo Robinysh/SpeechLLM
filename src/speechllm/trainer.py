@@ -1,3 +1,4 @@
+import bitsandbytes as bnb
 import torch
 from lightningtools import reporter
 from lightningtools.trainer import BaseLightningModule
@@ -48,7 +49,7 @@ class Model(BaseLightningModule):
         # NOTE: optimizer frequency messes up feature loss
         config_opt = self.config.config_optimizers
 
-        optim_t = torch.optim.AdamW(
+        optim_t = bnb.optim.Adam8bit(
             self.param_group["default"],
             config_opt.default.learning_rate,
         )
