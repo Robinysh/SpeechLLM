@@ -4,6 +4,8 @@ from lightningtools import reporter
 from lightningtools.trainer import BaseLightningModule
 from lightningtools.utils import NoamLR
 
+import speechllm.logger  # noqa pylint: disable=unused-import
+
 # logger.remove()
 # logger.add(sys.stderr, level="INFO")
 
@@ -24,13 +26,31 @@ class Model(BaseLightningModule):
         # on_batch_start does not work
         self.log_batch(*args, **kwargs)
 
-    def log_batch(self, batch, batch_idx, *args, **kwargs):
-        pass
-        # reporter.report(
-        #    "image/input",
-        #    batch["image"],
-        #    tag="image",
-        # )
+    # pylint: disable-next=unused-argument
+    def log_batch(self, batch, *args, **kwargs):
+        reporter.report(
+            "audio/input",
+            batch["input_audio"],
+            tag="audio",
+        )
+
+        reporter.report(
+            "audio/output_label",
+            batch["output_audio"],
+            tag="audio",
+        )
+
+        reporter.report(
+            "text/input_transcript",
+            batch["input_transcript"],
+            tag="text",
+        )
+
+        reporter.report(
+            "text/output_transcript",
+            batch["output_transcript"],
+            tag="text",
+        )
 
     def detach_values(self, model_output):
         result = {}

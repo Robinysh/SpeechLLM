@@ -1,9 +1,10 @@
+import json
 from pathlib import Path
 
 import torchaudio
 
 # pylint: disable-next=no-name-in-module
-from samplerate2 import resample
+from samplerate import resample
 
 from speechllm.data.utils import tokenize_func
 
@@ -16,14 +17,36 @@ def rename_cols(row):
     return row
 
 
-def load_audio(row):
-    audio, sr = torchaudio.load(row["fpath"])
-    row["audio"] = audio[0]
-    # assert sr == 16000, 'Data sampling rate does not match hubert sampling rate'
-    if sr != 16000:
-        ratio = 16000 / sr
-        row["audio"] = resample(row["audio"], ratio, "sinc_fastest")
-    return row
+def load_audio(fpath):
+    input_fpath = f"{fpath}_1.opus"
+    output_fpath = f"{fpath}_2.opus"
+
+    def f(x):
+        audio, sr = torchaudio.load(x)
+        audio = audio[0]
+        if sr != 16000:
+            ratio = 16000 / sr
+            audio = resample(audio, ratio, "sinc_fastest")
+        return audio
+
+    input_audio = f(input_fpath)
+    output_audio = f(output_fpath)
+
+    return {
+        "input_audio": input_audio,
+        "output_audio": output_audio,
+    }
+
+
+def read_transcript(fpath):
+    index = int(str(fpath).rsplit("_", maxsplit=1)[-1])
+    txt_fpath = fpath.parent.with_suffix(".json")
+    txt = json.loads(txt_fpath.read_text(encoding="utf-8"))
+    info_pair = txt[index]
+    return {
+        "input_transcript": info_pair[0]["text_tn"],
+        "output_transcript": info_pair[1]["text_tn"],
+    }
 
 
 def add_cols(row, cols):
@@ -85,8 +108,8 @@ def template_and_tokenize(data, tokenizer, prompter):
 
 
 def read_audio_tokens(data, root_fpath):
-    input_fpath = root_fpath / f'{data["text"]}_1.txt'
-    output_fpath = root_fpath / f'{data["text"]}_2.txt'
+    input_fpath = root_fpath / f'{data["fname"]}_1.txt'
+    output_fpath = root_fpath / f'{data["fname"]}_2.txt'
 
     # TODO
     # input_tokens = input_fpath.read_text()

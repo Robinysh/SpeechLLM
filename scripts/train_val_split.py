@@ -12,7 +12,7 @@ def duplicate_pairs(fpaths):
 
 
 @click.command()
-@click.option("--fpath", default="/data3/public/Gigaspeech/processed/audio_pairs")
+@click.option("--fpath", default="/data3/public/GigaSpeech/processed/audio_pairs")
 @click.option("--train_portion", default=0.9)
 @click.option("--test_count", default=None)
 def main(fpath, train_portion, test_count):

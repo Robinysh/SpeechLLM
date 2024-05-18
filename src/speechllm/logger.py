@@ -19,4 +19,14 @@ def log_image(image):
     return wandb.Image(image)
 
 
+def log_text(text):
+    return text[0]
+
+
+def log_audio(audio):
+    return wandb.Audio(audio[0], sample_rate=16000)
+
+
 reporter.register("image", log_image)
+reporter.register("audio", log_audio)
+reporter.register("text", log_text)

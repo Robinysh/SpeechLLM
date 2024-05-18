@@ -3,11 +3,7 @@ import ray
 import torch
 from speechcolab.datasets.gigaspeech import GigaSpeech
 
-from speechllm.data_generation.processes import (
-    DialogueFilter,
-    add_cols,
-    split_dialogues,
-)
+from speechllm.data_generation.processes import add_cols, split_dialogues
 
 
 # pylint: disable=abstract-method,too-few-public-methods
@@ -29,8 +25,8 @@ def print_row(row):
 @click.option(
     "--output_path", default="./data/GigaSpeech/download/extracted/cleaned_flac"
 )
-@click.option("--data_path", default="./data/GigaSpeech/download/S")
-@click.option("--subset", default="{S}")
+@click.option("--data_path", default="./data/GigaSpeech/download/XS")
+@click.option("--subset", default="{L}")
 @click.option("--nnodes", default=1)
 @click.option("--node_id", default=0)
 def main(data_path, output_path, subset, nnodes, node_id):
@@ -61,7 +57,7 @@ def main(data_path, output_path, subset, nnodes, node_id):
     # ds = ds.map(generate_hubert_embs)
     # write metadata.tsv
     # ds = ds.map(Diarizer, concurrency=8,  num_gpus=0.5)
-    ds = ds.map(DialogueFilter, concurrency=4)
+    # ds = ds.map(DialogueFilter, concurrency=4)
     ds = ds.map(split_dialogues)
     ds.materialize()
 

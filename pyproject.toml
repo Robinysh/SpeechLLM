@@ -30,7 +30,6 @@ dependencies = [
     "lightningtools @ git+https://github.com/flyingmilktea/lightningtools@raydata",
     "ray[data]>=2.9.1",
     "bitsandbytes>=0.42.0",
-    "samplerate2>=0.0.2",
     "auto-gptq>=0.6.0",
     "grpcio>=1.62.0",
     "pyannote-audio>=3.1.1",
@@ -44,6 +43,9 @@ dependencies = [
     "unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git",
     "trl>=0.8.6",
     "peft>=0.10.0",
+    "samplerate>=0.2.1",
+    "ijson>=3.2.3",
+    "pycryptodome>=3.20.0",
 ]
 requires-python = ">=3.10.0,<3.12"
 readme = "README.md"
@@ -67,7 +69,7 @@ lint-format.composite = ["lint-format-python", "lint-format-gitignore", "lint-fo
 pdm-flake8.shell = "git ls-files '*.py' | xargs -t pdm run flake8"
 pdm-pylint.shell = "git ls-files '*.py' | xargs -t pdm run pylint"
 lint.composite = ["pdm-flake8", "pdm-pylint"]
-start.shell = "if [ -e .env ]; then pdm run lightning_trainer; else echo 'Make a copy of .env from .env.sample before you start.'; fi"
+start.shell = "pdm run lightning_trainer"
 #data-generate.shell = "if [ -e .env ]; then pdm run python src/speechllm/data_generation/main.py; else echo 'Make a copy of .env from .env.sample before you start.'; fi"
 data-generate.env_file=".env"
 data-generate.shell = "pdm run python src/speechllm/data_generation/main.py"
@@ -75,5 +77,6 @@ pre_install.shell = "export CMAKE_ARGS='-DLLAMA_CUBLAS=on' FORCE_CMAKE=1"
 llm_server.shell = "python -m vllm.entrypoints.openai.api_server --model astronomer/Llama-3-8B-Instruct-GPTQ-8-Bit --gpu-memory-utilization 0.8 --dtype=half"
 
 [tool.pdm.options]
+add = ["--no-isolation"]
 sync = ["--no-isolation"]
 installsync = ["--no-isolation"]

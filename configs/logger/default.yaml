@@ -1,5 +1,5 @@
 _target_: lightning.pytorch.loggers.WandbLogger
-id: ${project_name}
-name: ${project_name}
+id: ${project_name}${run_name}
+name: ${run_name}
 project: ${project_name}
 resume: "auto"

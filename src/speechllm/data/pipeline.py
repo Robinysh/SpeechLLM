@@ -27,7 +27,7 @@ class DataModule(L.LightningDataModule):
 
 def hf_pipeline(
     database,
-    num_workers=8,
+    num_workers=16,
     cache_dir=None,
     use_cache=True,
 ):
@@ -35,12 +35,32 @@ def hf_pipeline(
     cache_dir = Path(cache_dir)
 
     ds = load_dataset("text", data_files=database["metadata"])["train"]
+    ds = ds.rename_column("text", "fname")
 
     ds = ds.map(
-        lambda x: processes.read_audio_tokens(x, Path(database["metadata"])),
+        lambda x: processes.read_audio_tokens(x, Path(database["tokens"])),
         batched=False,
         num_proc=num_workers,
         load_from_cache_file=False,
+        desc="reading audio tokens",
+    )
+
+    Path(cache_dir / "audio").mkdir(parents=True, exist_ok=True)
+    ds = ds.map(
+        lambda x: processes.load_audio(Path(database["audio"]) / x["fname"]),
+        batched=False,
+        num_proc=num_workers,
+        load_from_cache_file=use_cache,
+        cache_file_name=str(cache_dir / "audio" / "train.arrow"),
+        desc="reading audio",
+    )
+
+    ds = ds.map(
+        lambda x: processes.read_transcript(Path(database["transcript"]) / x["fname"]),
+        batched=False,
+        num_proc=num_workers,
+        load_from_cache_file=False,
+        desc="reading transcripts",
     )
 
     Path(cache_dir / "template").mkdir(parents=True, exist_ok=True)
@@ -52,10 +72,10 @@ def hf_pipeline(
         num_proc=num_workers,
         load_from_cache_file=use_cache,
         cache_file_name=str(cache_dir / "template" / "train.arrow"),
+        desc="generating prompts",
     )
 
     # ds.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"])
-    # ic(ds[0])
 
     return ds
 
@@ -64,9 +84,12 @@ if __name__ == "__main__":
     print(
         hf_pipeline(
             {
-                "fpaths": "/data3/public/GigaSpeech/processed/train_files.txt",
+                "metadata": "/data3/public/GigaSpeech/processed/train_files.txt",
+                "audio": "/data3/public/GigaSpeech/processed/audio_pairs",
+                "transcript": "/data3/public/GigaSpeech/processed/dialogue_pairs",
+                "tokens": "/data3/public/GigaSpeech/processed/tokens",
             },
-            num_workers=8,
+            num_workers=16,
             cache_dir="/data3/robinysh/cache",
         )[0]
     )

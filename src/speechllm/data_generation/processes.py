@@ -20,8 +20,8 @@ from resemble_enhance.enhancer.inference import enhance, load_enhancer
 
 from speechllm.data_generation.speechcolab.datasets.gigaspeech import GigaSpeech
 
-DIALOGUE_PAIR_DIR = "dialogue_pairs_llama3"
-AUDIO_PAIR_DIR = "audio_pairs_llama3"
+DIALOGUE_PAIR_DIR = "dialogue_pairs"
+AUDIO_PAIR_DIR = "audio_pairs"
 
 
 def rename_cols(row):

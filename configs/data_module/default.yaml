@@ -21,7 +21,7 @@ data_module:
     drop_last: true
     num_workers: ${data_module.num_workers}
   val_dataset: ${data_module.val_dataset}
-num_workers: 8
+num_workers: 24
 train_dataset:
   _target_: speechllm.data.pipeline.hf_pipeline
   cache_dir: /data3/robinysh/cache/huggingface/
