@@ -19,7 +19,9 @@ def find_all_linear_names(model):
     return list(lora_module_names)
 
 
-def constructor(lora_alpha=32, lora_rank=32, unsloth=False):
+def constructor(
+    lora_alpha=32, lora_rank=32, unsloth=True, gradient_checkpointing=False
+):
     if unsloth:
         model, _ = FastLanguageModel.from_pretrained(
             model_name="fnlp/AnyGPT-chat",
@@ -43,7 +45,10 @@ def constructor(lora_alpha=32, lora_rank=32, unsloth=False):
             lora_alpha=lora_alpha,
             lora_dropout=0,
             bias="none",
-            use_gradient_checkpointing=False,
+            use_gradient_checkpointing="unsloth" if gradient_checkpointing else False,
+        )
+        FastLanguageModel.for_training(
+            model, use_gradient_checkpointing=gradient_checkpointing
         )
     else:
         bnb_config = BitsAndBytesConfig(
@@ -80,7 +85,8 @@ def constructor(lora_alpha=32, lora_rank=32, unsloth=False):
         )
 
         model = get_peft_model(model, peft_config)
-    model.gradient_checkpointing_disable()
+        if not gradient_checkpointing:
+            model.gradient_checkpointing_disable()
 
     def forward(model_input):
         lm_output = model(**model_input)
