@@ -27,8 +27,10 @@ train_dataset:
   cache_dir: /data3/robinysh/cache/huggingface/
   database: ${database.train}
   num_workers: ${data_module.num_workers}
+  stage: train
 val_dataset:
   _target_: speechllm.data.pipeline.hf_pipeline
   cache_dir: /data3/robinysh/cache/huggingface/
   database: ${database.val}
   num_workers: ${data_module.num_workers}
+  stage: val

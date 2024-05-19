@@ -1,7 +1,7 @@
 config_optimizers:
   default:
     decay_step: 105000
-    learning_rate: 0.000001
+    learning_rate: 1.0e-06
     warmup_step: 2000
     weight_decay: 0
 defaults:
