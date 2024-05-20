@@ -20,7 +20,7 @@ def find_all_linear_names(model):
 
 
 def constructor(
-    lora_alpha=32, lora_rank=32, unsloth=True, gradient_checkpointing=False
+    lora_alpha=64, lora_rank=32, unsloth=True, gradient_checkpointing=False
 ):
     if unsloth:
         model, _ = FastLanguageModel.from_pretrained(

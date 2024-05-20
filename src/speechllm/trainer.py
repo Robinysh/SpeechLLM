@@ -26,6 +26,10 @@ class Model(BaseLightningModule):
         # on_batch_start does not work
         self.log_batch(*args, **kwargs)
 
+    def transfer_batch_to_device(self, batch, device, dataloader_idx):
+        batch["model_input"] = batch["model_input"].to(device)
+        return batch
+
     # pylint: disable-next=unused-argument
     def log_batch(self, batch, *args, **kwargs):
         reporter.report(
@@ -69,7 +73,8 @@ class Model(BaseLightningModule):
         # NOTE: optimizer frequency messes up feature loss
         config_opt = self.config.config_optimizers
 
-        optim_t = bnb.optim.Adam8bit(
+        # optim_t = bnb.optim.Adam8bit(
+        optim_t = bnb.optim.PagedAdamW(
             self.param_group["default"],
             config_opt.default.learning_rate,
         )
