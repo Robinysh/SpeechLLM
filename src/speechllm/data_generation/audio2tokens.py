@@ -38,3 +38,19 @@ modal_special_str = {
         "vocab_size": music_vocab_size,
     },
 }
+
+
+def speech_tokens_to_string(tokens):
+    """
+    Convert visual tokens to a single string with prefix and postfix.
+    """
+    prefix = modal_special_str["speech"]["prefix"]
+    start = modal_special_str["speech"]["sos"]
+    end = modal_special_str["speech"]["eos"]
+
+    tokens_str = [f"<{prefix}{token}>" for token in tokens]
+    return start + "".join(tokens_str) + end
+
+
+if __name__ == "__main__":
+    print(speech_tokens_to_string([1, 32, 23]))

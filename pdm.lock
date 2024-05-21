@@ -5,7 +5,7 @@
 groups = ["default"]
 strategy = ["cross_platform"]
 lock_version = "4.4.1"
-content_hash = "sha256:35b033616c219f2186967ade80638476ae9d9e97c224750632ae7fd3d0e8083a"
+content_hash = "sha256:66c6f0b6d0c4ca261df7b102684817224c3e5eccb93e9cceaa5c7223aab1c1a2"
 
 [[package]]
 name = "accelerate"
@@ -4602,6 +4602,22 @@ dependencies = [
 files = [
     {file = "speechbrain-1.0.0-py3-none-any.whl", hash = "sha256:3f163958fc5a6dc05851700e8cee9d828110fbb7a8defec911f25849ce33f45f"},
     {file = "speechbrain-1.0.0.tar.gz", hash = "sha256:f44797a23e0351f6ebf5ffd323bf44857431b2ffa55ec8e0c9f66e2ac6f6cea7"},
+]
+
+[[package]]
+name = "speechtokenizer"
+version = "0.1.2"
+requires_python = ">=3.8.0"
+summary = "Unified speech tokenizer for speech language model"
+dependencies = [
+    "einops",
+    "numpy",
+    "torch",
+    "torchaudio",
+]
+files = [
+    {file = "speechtokenizer-0.1.2-py3-none-any.whl", hash = "sha256:277cefa3a6a6197514e2ff3da525ac6a15fa65266913708a827e13568ac77ba1"},
+    {file = "speechtokenizer-0.1.2.tar.gz", hash = "sha256:3b82bc38077f8a09b302ecf30bea5f93d36527790219ac2cf2146cf436e8df9a"},
 ]
 
 [[package]]

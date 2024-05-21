@@ -17,11 +17,14 @@ from pyannote.audio import Pipeline
 from pyannote.core import Segment
 from pydub import AudioSegment
 from resemble_enhance.enhancer.inference import enhance, load_enhancer
+from speechtokenizer import SpeechTokenizer
 
+from speechllm.data_generation.audio2tokens import speech_tokens_to_string
 from speechllm.data_generation.speechcolab.datasets.gigaspeech import GigaSpeech
 
 DIALOGUE_PAIR_DIR = "dialogue_pairs"
 AUDIO_PAIR_DIR = "audio_pairs"
+TOKENS_DIR = "tokens"
 
 
 def rename_cols(row):
@@ -403,3 +406,62 @@ class DialogueFilter:
             json.dump(pairs, out_file, sort_keys=True, indent=4, ensure_ascii=False)
 
         return row
+
+
+class SpeechTokenizerGenerator:
+    def __init__(self, device="cuda"):
+        model_fpath = Path("/data3/robinysh/models/speechtokenizer")
+        self.speech_tokenizer = (
+            SpeechTokenizer.load_from_checkpoint(
+                model_fpath / "config.json", model_fpath / "ckpt.dev"
+            )
+            .half()
+            .to(device)
+        )
+        self.device = device
+
+    def __call__(self, row):
+        dialogue_path = (
+            Path(row["data_path"]) / DIALOGUE_PAIR_DIR / Path(row["path"]).stem
+        ).with_suffix(".json")
+        if not dialogue_path.exists():
+            return row
+        dialogue_data = json.loads(dialogue_path.read_text())
+        if len(dialogue_data) == 0:
+            return row
+
+        audio_path = Path(row["data_path"]) / AUDIO_PAIR_DIR / Path(row["path"]).stem
+        save_path = Path(row["data_path"]) / TOKENS_DIR / Path(row["path"]).stem
+        if save_path.exists():
+            return row
+        save_path.mkdir(parents=True, exist_ok=True)
+
+        for i, segments in enumerate(dialogue_data):
+            for j in range(len(segments)):
+                tokens_fpath = (
+                    save_path / f"{Path(row['path']).stem}_{i}_{j + 1}"
+                ).with_suffix(".txt")
+                audio_fpath = (
+                    audio_path / f"{Path(row['path']).stem}_{i}_{j + 1}"
+                ).with_suffix(".opus")
+                if not audio_fpath.exists():
+                    continue
+                code = self.encode_speech(audio_fpath)
+                code_string = speech_tokens_to_string(code)
+                tokens_fpath.write_text(code_string, encoding="utf-8")
+        return row
+
+    def encode_speech(self, audio_path):
+        wav, sr = torchaudio.load(audio_path)
+        # monophonic checking
+        if wav.shape[0] > 1:
+            wav = wav[:1,]
+        if sr != self.speech_tokenizer.sample_rate:
+            wav = torchaudio.functional.resample(
+                wav, sr, self.speech_tokenizer.sample_rate
+            )
+        wav = wav.unsqueeze(0).to(self.device).half()
+        # Extract discrete codes from SpeechTokenizer
+        with torch.no_grad():
+            codes = self.speech_tokenizer.encode(wav)  # codes: (n_q, B, T)
+        return codes[0, 0, :]

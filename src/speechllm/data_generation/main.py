@@ -1,9 +1,13 @@
 import click
 import ray
 import torch
-from speechcolab.datasets.gigaspeech import GigaSpeech
 
-from speechllm.data_generation.processes import add_cols, split_dialogues
+from speechllm.data_generation.processes import (
+    SpeechTokenizerGenerator,
+    add_cols,
+    split_dialogues,
+)
+from speechllm.data_generation.speechcolab.datasets.gigaspeech import GigaSpeech
 
 
 # pylint: disable=abstract-method,too-few-public-methods
@@ -59,6 +63,7 @@ def main(data_path, output_path, subset, nnodes, node_id):
     # ds = ds.map(Diarizer, concurrency=8,  num_gpus=0.5)
     # ds = ds.map(DialogueFilter, concurrency=4)
     ds = ds.map(split_dialogues)
+    ds = ds.map(SpeechTokenizerGenerator, concurrency=2, num_gpus=0.5)
     ds.materialize()
 
 
