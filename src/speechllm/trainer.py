@@ -22,6 +22,11 @@ class Model(BaseLightningModule):
         # on_batch_start does not work
         self.log_batch(*args, **kwargs)
 
+    # pylint: disable-next=unused-argument
+    def on_train_batch_end(self, *args, **kwargs):
+        lr_scheduler = self.lr_schedulers()
+        lr_scheduler.step()
+
     def on_validation_batch_start(self, *args, **kwargs):
         # on_batch_start does not work
         self.log_batch(*args, **kwargs)
