@@ -111,11 +111,7 @@ def read_audio_tokens(data, root_fpath):
     input_fpath = root_fpath / f'{data["fname"]}_1.txt'
     output_fpath = root_fpath / f'{data["fname"]}_2.txt'
 
-    # TODO
-    # input_tokens = input_fpath.read_text()
-    # output_tokens = output_fpath.read_text()
-
-    input_tokens = str(input_fpath)
-    output_tokens = str(output_fpath)
+    input_tokens = input_fpath.read_text(encoding="utf-8")
+    output_tokens = output_fpath.read_text(encoding="utf-8")
 
     return {"input_tokens": input_tokens, "output_tokens": output_tokens}

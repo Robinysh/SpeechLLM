@@ -5,12 +5,11 @@ callbacks:
   - ${callbacks.lr_callback}
 detect_anomaly: false
 devices: 1
-limit_train_batches: 10
-limit_val_batches: 10
+limit_train_batches: null
+limit_val_batches: null
 log_every_n_steps: 10
 logger: ${logger}
 max_epochs: 1
 num_sanity_val_steps: 1
 precision: bf16-mixed
-profiler: simple
 reload_dataloaders_every_n_epochs: 1

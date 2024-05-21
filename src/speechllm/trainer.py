@@ -73,8 +73,8 @@ class Model(BaseLightningModule):
         # NOTE: optimizer frequency messes up feature loss
         config_opt = self.config.config_optimizers
 
-        # optim_t = bnb.optim.Adam8bit(
-        optim_t = bnb.optim.PagedAdamW(
+        optim_t = bnb.optim.Adam8bit(
+            # optim_t = bnb.optim.PagedAdamW(
             self.param_group["default"],
             config_opt.default.learning_rate,
         )
