@@ -1,7 +1,14 @@
+import re
+from functools import cache
+from pathlib import Path
+
 import numpy as np
+import torch
 from lightningtools import reporter
+from speechtokenizer import SpeechTokenizer
 
 import wandb
+from speechllm.soundstorm_speechtokenizer.decode import decode_speech, load_soundstorm
 
 
 def save_figure_to_numpy(fig, spectrogram=False):
@@ -27,6 +34,35 @@ def log_audio(audio):
     return wandb.Audio(audio[0], sample_rate=16000)
 
 
+@cache
+def get_speech_tokens_models():
+    soundstorm = load_soundstorm(
+        "/data3/robinysh/models/soundstorm/speechtokenizer_soundstorm_mls.pt"
+    )
+    model_fpath = Path("/data3/robinysh/models/speechtokenizer")
+    speech_tokenizer = SpeechTokenizer.load_from_checkpoint(
+        model_fpath / "config.json", model_fpath / "ckpt.dev"
+    )
+    soundstorm = torch.compile(soundstorm, backend="onnxrt")
+    speech_tokenizer = torch.compile(speech_tokenizer, backend="onnxrt")
+    return soundstorm, speech_tokenizer
+
+
+def log_speech_tokens(tokens):
+    soundstorm, speech_tokenizer = get_speech_tokens_models()
+    sample_tokens = tokens[0]
+    speech_code = re.search("(?<=<sosp>).*(?=<eosp>)", sample_tokens)
+    audio = []
+    if speech_code is not None:
+        audio = decode_speech(
+            speech_code.group(),
+            soundstorm=soundstorm,
+            speech_tokenizer=speech_tokenizer,
+        )[0]
+    return wandb.Audio(audio, sample_rate=16000)
+
+
 reporter.register("image", log_image)
 reporter.register("audio", log_audio)
+reporter.register("speechtokens", log_speech_tokens)
 reporter.register("text", log_text)

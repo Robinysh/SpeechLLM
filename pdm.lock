@@ -5,7 +5,7 @@
 groups = ["default"]
 strategy = ["cross_platform"]
 lock_version = "4.4.1"
-content_hash = "sha256:66c6f0b6d0c4ca261df7b102684817224c3e5eccb93e9cceaa5c7223aab1c1a2"
+content_hash = "sha256:c198e8c0006619c3949610727b82f03fb6aec96fd331a888cc063e3ad5157ac4"
 
 [[package]]
 name = "accelerate"
@@ -407,6 +407,16 @@ summary = "Internationalization utilities"
 files = [
     {file = "Babel-2.14.0-py3-none-any.whl", hash = "sha256:efb1a25b7118e67ce3a259bed20545c29cb68be8ad2c784c83689981b7a57287"},
     {file = "Babel-2.14.0.tar.gz", hash = "sha256:6919867db036398ba21eb5c7a0f6b28ab8cbc3ae7a73a44ebe34ae74a4e7d363"},
+]
+
+[[package]]
+name = "beartype"
+version = "0.16.4"
+requires_python = ">=3.8.0"
+summary = "Unbearably fast runtime type checking in pure Python."
+files = [
+    {file = "beartype-0.16.4-py3-none-any.whl", hash = "sha256:64865952f9dff1e17f22684b3c7286fc79754553b47eaefeb1286224ae8c1bd9"},
+    {file = "beartype-0.16.4.tar.gz", hash = "sha256:1ada89cf2d6eb30eb6e156eed2eb5493357782937910d74380918e53c2eae0bf"},
 ]
 
 [[package]]
@@ -4985,6 +4995,14 @@ dependencies = [
 files = [
     {file = "torch_pitch_shift-1.2.4-py3-none-any.whl", hash = "sha256:6cde2bddd7388e6da05e354fb84cf8e95a33e79d196e4c8ebd655faa4296cc42"},
     {file = "torch_pitch_shift-1.2.4.tar.gz", hash = "sha256:c173fc808184a684c1ecd99d5744573e55a667f238e2268adaf15c9467d99db9"},
+]
+
+[[package]]
+name = "torch-tensorrt"
+version = "0.0.0.post1"
+summary = ""
+files = [
+    {file = "torch-tensorrt-0.0.0.post1.tar.gz", hash = "sha256:ebe119f7783ebd4ef4e44815c0a3014941172a2deb4f325ffc410369891138d7"},
 ]
 
 [[package]]

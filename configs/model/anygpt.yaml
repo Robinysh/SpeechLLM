@@ -1,5 +1,5 @@
 inference_pipeline:
-  - fn: forward
+  - fn: inference
     module: anygpt
 modules:
   anygpt:

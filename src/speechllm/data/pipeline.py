@@ -77,6 +77,16 @@ def hf_pipeline(
         cache_file_name=str(cache_dir / "transcript" / f"{stage}.arrow"),
     )
 
+    Path(cache_dir / "infer_template").mkdir(parents=True, exist_ok=True)
+    ds = ds.map(
+        lambda x: {"infer_prompt": prompter.generate_template(x["input_tokens"])},
+        batched=False,
+        num_proc=num_workers,
+        load_from_cache_file=use_cache,
+        cache_file_name=str(cache_dir / "infer_template" / f"{stage}.arrow"),
+        desc="generating infer prompts",
+    )
+
     Path(cache_dir / "template").mkdir(parents=True, exist_ok=True)
     ds = ds.map(
         lambda x: {

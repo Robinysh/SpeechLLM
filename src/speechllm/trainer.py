@@ -5,6 +5,7 @@ from lightningtools.trainer import BaseLightningModule
 from lightningtools.utils import NoamLR
 
 import speechllm.logger  # noqa pylint: disable=unused-import
+from speechllm.data.utils import get_tokenizer
 
 # logger.remove()
 # logger.add(sys.stderr, level="INFO")
@@ -14,9 +15,25 @@ torch.set_float32_matmul_precision("medium")
 
 # pylint: disable-next=too-many-ancestors
 class Model(BaseLightningModule):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.tokenizer = get_tokenizer()
+
     # pylint: disable-next=arguments-differ
     def forward(self, ret):
-        return self.pipelines["inference"](**ret)
+        token_ids = self.pipelines["inference"](**ret)["tokens"]
+        response = self.tokenizer.batch_decode(
+            token_ids.cpu(), skip_special_tokens=True
+        )
+        return response
+
+    # pylint: disable-next=unused-argument
+    def log_eval(self, batch, model_output, model_inference_output):
+        reporter.report(
+            "audio/sample_prediction",
+            model_inference_output,
+            tag="speechtokens",
+        )
 
     def on_train_batch_start(self, *args, **kwargs):
         # on_batch_start does not work
@@ -33,6 +50,7 @@ class Model(BaseLightningModule):
 
     def transfer_batch_to_device(self, batch, device, dataloader_idx):
         batch["model_input"] = batch["model_input"].to(device)
+        batch["model_infer_input"] = batch["model_infer_input"].to(device)
         return batch
 
     # pylint: disable-next=unused-argument

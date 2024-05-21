@@ -24,7 +24,10 @@ class Prompter:
     def __init__(self, verbose: bool = False):
         self._verbose = verbose
 
-    def generate_template(self, input_tokens, output_tokens) -> str:
+    def generate_template(self, input_tokens, output_tokens=None) -> str:
+        if output_tokens is None:
+            prompt = user_name + f": {input_tokens}" + f"{user_end} {chatbot_name}:"
+            return prompt
         prompt = (
             user_name
             + f": {input_tokens}"

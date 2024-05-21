@@ -75,6 +75,7 @@ def collate(row, tokenizer):
     """
     row = list_dict_to_dict_list(row)
     row["model_input"] = tokenize_func(row["prompt"], tokenizer)
+    row["model_infer_input"] = tokenize_func(row["infer_prompt"], tokenizer)
     return row
 
 

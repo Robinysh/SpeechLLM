@@ -17,7 +17,7 @@ def get_tokenizer():
     tokenizer = LlamaTokenizer.from_pretrained(
         "fnlp/AnyGPT-chat",
         # model_max_length=training_args.model_max_length,
-        padding_side="right",
+        padding_side="left",
         use_fast=False,
     )
     # pylint: disable=pointless-string-statement

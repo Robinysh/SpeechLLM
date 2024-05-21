@@ -6,10 +6,11 @@ callbacks:
 detect_anomaly: false
 devices: 1
 limit_train_batches: null
-limit_val_batches: null
+limit_val_batches: 30
 log_every_n_steps: 10
 logger: ${logger}
 max_epochs: 1
 num_sanity_val_steps: 1
 precision: bf16-mixed
 reload_dataloaders_every_n_epochs: 1
+val_check_interval: 300

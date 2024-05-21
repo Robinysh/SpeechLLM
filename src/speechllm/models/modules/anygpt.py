@@ -90,21 +90,29 @@ def constructor(
 
     def forward(model_input):
         lm_output = model(**model_input)
+
+        # reporter.report(
+        #     "audio/next_token_generation",
+        #     torch.argmax(lm_output.logits, dim=-1),
+        #     tag="speechtokens",
+        # )
+
         return {
             "lm_output": lm_output,
         }
 
-    # def inference(audio):
-    #     tokenizer.decode(
-    #         model.generate(
-    #             **tokenizer("The meaning of life is", return_tensors="pt").to(model.device),
-    #             eos_token_id=tokenizer.encode("<|im_end|>"),
-    #         )[0]
-    #     )
+    def inference(model_infer_input):
+        tokens = model.generate(
+            **model_infer_input,
+            # eos_token_id=tokenizer.encode("<eosp>"),
+            max_length=2048,
+            do_sample=True,
+        )
+        tokens = tokens[:, model_infer_input["input_ids"].shape[1] :]
 
-    #     return {
-    #         "logit": logit,
-    #     }
+        return {
+            "tokens": tokens,
+        }
 
     modules = {
         "anygpt": model,
@@ -112,6 +120,7 @@ def constructor(
 
     methods = {
         "forward": forward,
+        "inference": inference,
     }
 
     return {"modules": modules, "methods": methods}
