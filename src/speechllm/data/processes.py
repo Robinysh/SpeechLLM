@@ -115,3 +115,10 @@ def read_audio_tokens(data, root_fpath):
     output_tokens = output_fpath.read_text(encoding="utf-8")
 
     return {"input_tokens": input_tokens, "output_tokens": output_tokens}
+
+
+def filter_long_audio(data, limit=2000):
+    return (
+        len(data["input_tokens"].split("><")) + len(data["output_tokens"].split("><"))
+        <= limit
+    )

@@ -48,6 +48,15 @@ def hf_pipeline(
         desc="reading audio tokens",
     )
 
+    Path(cache_dir / "filtered").mkdir(parents=True, exist_ok=True)
+    ds = ds.filter(
+        processes.filter_long_audio,
+        num_proc=num_workers,
+        load_from_cache_file=use_cache,
+        cache_file_name=str(cache_dir / "filtered" / f"{stage}.arrow"),
+        desc="filtering long audio",
+    )
+
     Path(cache_dir / "audio").mkdir(parents=True, exist_ok=True)
     ds = ds.map(
         lambda x: processes.load_audio(Path(database["audio"]) / x["fname"]),

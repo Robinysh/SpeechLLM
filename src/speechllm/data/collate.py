@@ -27,7 +27,7 @@ def to_list_of_tensor(x):
     return [torch.Tensor(i) for i in x]
 
 
-def dict_list_to_list_dict(x):
+def list_dict_to_dict_list(x):
     return {k: [dic[k] for dic in x] for k in x[0]}
 
 
@@ -73,6 +73,26 @@ def collate(row, tokenizer):
         "raw_tokens": rows["raw_tokens"],
     }
     """
-    row = dict_list_to_list_dict(row)
+    row = list_dict_to_dict_list(row)
     row["model_input"] = tokenize_func(row["prompt"], tokenizer)
     return row
+
+
+if __name__ == "__main__":
+    from transformers import LlamaTokenizer
+
+    tokenizer_ = LlamaTokenizer.from_pretrained(
+        "fnlp/AnyGPT-chat",
+        padding_side="right",
+        use_fast=False,
+    )
+
+    row_ = [
+        {
+            "prompt": "<sosp><🗣️149><🗣️149><🗣️285><🗣️285><🗣️285><🗣️558><🗣️558><🗣️994><🗣️484><🗣️735><🗣️317><🗣️317><🗣️896><🗣️896><🗣️1001><🗣️680><🗣️918><🗣️918><🗣️976><🗣️976><🗣️976><🗣️399><🗣️746><🗣️972><🗣️46><🗣️46><🗣️469><eosp>"
+        }
+    ]
+
+    output_ = collate(row_, tokenizer_)
+    print(len(row_[0]["prompt"].split("><")))
+    print(output_["model_input"]["input_ids"].shape)
