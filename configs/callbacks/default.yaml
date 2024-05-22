@@ -1,7 +1,7 @@
 checkpoint_callback:
   _target_: lightning.pytorch.callbacks.ModelCheckpoint
   dirpath: /data/robin/ml/${project_name}/${run_name}/
-  every_n_train_steps: 2000
+  every_n_train_steps: 1000
   mode: min
   monitor: valid/loss
   save_last: true

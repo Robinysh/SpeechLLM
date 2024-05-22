@@ -79,6 +79,18 @@ class Model(BaseLightningModule):
             tag="text",
         )
 
+        reporter.report(
+            "text/infer_prompt",
+            batch["infer_prompt"],
+            tag="text",
+        )
+
+        reporter.report(
+            "text/prompt",
+            batch["prompt"],
+            tag="text",
+        )
+
     def detach_values(self, model_output):
         result = {}
         for key, val in model_output.items():

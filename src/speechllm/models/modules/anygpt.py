@@ -108,7 +108,8 @@ def constructor(
             max_length=2048,
             do_sample=True,
         )
-        tokens = tokens[:, model_infer_input["input_ids"].shape[1] :]
+        # -1 for keeping <sosp>
+        tokens = tokens[:, model_infer_input["input_ids"].shape[1] - 1 :]
 
         return {
             "tokens": tokens,

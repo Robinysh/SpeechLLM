@@ -1,7 +1,7 @@
 # pylint: skip-file
 
 # It's just because the name MMGPT was used for model training in the early stages of research.
-chatbot_name = "[MMGPT]"
+chatbot_name = "[AnyGPT]"
 user_name = "[Human]"
 user_end = "<eoh>"
 chatbot_end = "<eos>"
@@ -26,13 +26,8 @@ class Prompter:
 
     def generate_template(self, input_tokens, output_tokens=None) -> str:
         if output_tokens is None:
-            prompt = user_name + f": {input_tokens}" + f"{user_end} {chatbot_name}:"
+            prompt = f"{user_name}: Let's chat.{input_tokens}{user_end} {chatbot_name}: <sosp>"
             return prompt
-        prompt = (
-            user_name
-            + f": {input_tokens}"
-            + f"{user_end} {chatbot_name}: "
-            + f"{output_tokens}"
-            + f"{chatbot_end}"
-        )
+
+        prompt = f"{user_name}: Let's chat.{input_tokens}{user_end} {chatbot_name}: {output_tokens}{chatbot_end}"
         return prompt
