@@ -1,9 +1,9 @@
 config_optimizers:
-  default:
-    decay_step: 105000
-    learning_rate: 2.0e-05
-    warmup_step: 1000
-    weight_decay: 0
+  decay_step: 105000
+  learning_rate: 2.0e-05
+  optimizer: galore
+  warmup_step: 1000
+  weight_decay: 0
 defaults:
   - database: default
   - data_module: default

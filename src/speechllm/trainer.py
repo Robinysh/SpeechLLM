@@ -1,8 +1,9 @@
 import bitsandbytes as bnb
 import torch
+from galore_torch import GaLoreAdamW8bit
 from lightningtools import reporter
 from lightningtools.trainer import BaseLightningModule
-from lightningtools.utils import NoamLR
+from lightningtools.utils import NoamLR, detach_any
 
 import speechllm.logger  # noqa pylint: disable=unused-import
 from speechllm.data.utils import get_tokenizer
@@ -27,6 +28,57 @@ class Model(BaseLightningModule):
         )
         return response
 
+    def training_step(self, batch, batch_idx):
+        optimizer_idx = batch_idx % len(self.optimizer_idx_map)
+        stage_name = self.optimizer_idx_map[int(optimizer_idx)]
+        if stage_name not in self.pipelines:
+            return None
+        model_output = self.pipelines[stage_name](
+            **batch, optimizer_idx=optimizer_idx, step=self.global_step
+        )
+        if model_output is None:
+            return None
+        loss_dict = self.losses[stage_name](
+            **(batch | model_output), step=self.global_step
+        )
+        if len(loss_dict) == 0:
+            return None
+        total_loss = sum(map(torch.mean, loss_dict.values()))
+
+        self.manual_backward(total_loss)
+
+        if len(self.optimizer_idx_map) == 1:
+            opt = self.optimizers()
+        else:
+            opt = self.optimizers()[optimizer_idx]
+
+        if isinstance(opt, torch.optim.Optimizer):
+            self.clip_gradients(
+                opt,
+                gradient_clip_val=self.gradient_clip_val,
+                gradient_clip_algorithm="norm",
+            )
+            opt.step()
+            opt.zero_grad()
+
+        loss_dict["loss"] = total_loss
+        if not total_loss.requires_grad:
+            total_loss = None
+
+        reporter.report_dict(
+            {f"train_{stage_name}/" + k: torch.mean(v) for k, v in loss_dict.items()}
+        )
+        loss_dict = {
+            k: detach_any(v) if k != "loss" else v for k, v in loss_dict.items()
+        }
+
+        model_output = {k: detach_any(v) for k, v in model_output.items()}
+        return {
+            "loss_dict": loss_dict,
+            "model_output": model_output,
+            "loss": total_loss,
+        }
+
     # pylint: disable-next=unused-argument
     def log_eval(self, batch, model_output, model_inference_output):
         reporter.report(
@@ -42,7 +94,9 @@ class Model(BaseLightningModule):
     # pylint: disable-next=unused-argument
     def on_train_batch_end(self, *args, **kwargs):
         lr_scheduler = self.lr_schedulers()
-        lr_scheduler.step()
+        if lr_scheduler is not None:
+            lr_scheduler.step()
+        self.trainer.fit_loop.epoch_loop.manual_optimization.optim_step_progress.increment_completed()
 
     def on_validation_batch_start(self, *args, **kwargs):
         # on_batch_start does not work
@@ -104,31 +158,85 @@ class Model(BaseLightningModule):
 
         return result
 
-    def configure_optimizers(self):
-        # NOTE: optimizer frequency messes up feature loss
+    def configure_optimizers(self):  # noqa:C901
         config_opt = self.config.config_optimizers
+        if config_opt.optimizer == "galore":
+            galore_params = []
+            target_modules_list = ["attn", "mlp"]
+            for module_name, module in self.named_modules():
+                if not isinstance(module, torch.nn.Linear):
+                    continue
 
-        optim_t = bnb.optim.Adam8bit(
-            # optim_t = bnb.optim.PagedAdamW(
-            self.param_group["default"],
-            config_opt.default.learning_rate,
-        )
+                if not any(
+                    target_key in module_name for target_key in target_modules_list
+                ):
+                    continue
 
-        scheduler_t = NoamLR(optim_t, config_opt.default.warmup_step)
-        lr_dict_t = {
-            "scheduler": scheduler_t,
-            "interval": "step",
-            "monitor": "valid/loss",
-            "strict": False,
-            "name": "lr_dict_t",
-        }
+                galore_params.append(module.weight)
+            id_galore_params = [id(p) for p in galore_params]
 
-        return [
-            {
-                "optimizer": optim_t,
-                "lr_scheduler": lr_dict_t,
-            },
-        ]
+            optimizer_dict = {}
+            scheduler_dict = {}
+
+            # define a hook function to update the parameter p during the backward pass
+            def optimizer_hook(p):
+                if p.grad is None:
+                    return
+                optimizer_dict[p].step()
+                optimizer_dict[p].zero_grad()
+                scheduler_dict[p].step()
+
+            for p in self.parameters():
+                if p.requires_grad:
+                    if id(p) in id_galore_params:
+                        optimizer_dict[p] = GaLoreAdamW8bit(
+                            [
+                                {
+                                    "params": p,
+                                    "rank": 128,
+                                    "update_proj_gap": 200,
+                                    "scale": 0.25,
+                                    "proj_type": "std",
+                                }
+                            ],
+                            lr=config_opt.learning_rate,
+                        )
+                    else:
+                        optimizer_dict[p] = bnb.optim.Adam8bit(
+                            [p], lr=config_opt.learning_rate
+                        )
+
+                    scheduler_dict[p] = NoamLR(
+                        optimizer_dict[p],
+                        config_opt.warmup_step,
+                    )
+
+                    # Register the hook onto every parameter
+                    p.register_post_accumulate_grad_hook(optimizer_hook)
+            return []
+
+        if config_opt.optimizer.lower() == "adam":
+            # NOTE: optimizer frequency messes up feature loss
+            optimizer = bnb.optim.Adam8bit(
+                self.param_group["default"],
+                config_opt.learning_rate,
+            )
+
+            scheduler = NoamLR(optimizer, config_opt.warmup_step)
+            lr_dict = {
+                "scheduler": scheduler,
+                "interval": "step",
+                "monitor": "valid/loss",
+                "strict": False,
+                "name": "lr_dict_t",
+            }
+            return [
+                {
+                    "optimizer": optimizer,
+                    "lr_scheduler": lr_dict,
+                },
+            ]
+        raise ValueError(f"Unknown optimizer {config_opt.optimizer}")
 
     # pylint: disable-next=arguments-differ
     def configure_gradient_clipping(

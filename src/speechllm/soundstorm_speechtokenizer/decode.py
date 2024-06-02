@@ -44,9 +44,8 @@ def semantic2acoustic(semantic_tokens, prompt_tokens, soundstorm, tokenizer, ste
 
 
 @torch.no_grad()
-def decode_speech(content, soundstorm, speech_tokenizer):
+def decode_speech(content, soundstorm, speech_tokenizer, prompt_tokens=None):
     semantic_codes = [[int(num) for num in re.findall(r"\d+", content)]]
-    prompt_tokens = None
     wav = semantic2acoustic(
         torch.Tensor(semantic_codes).int(),
         prompt_tokens,

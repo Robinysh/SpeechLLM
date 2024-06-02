@@ -5,7 +5,7 @@
 groups = ["default"]
 strategy = ["cross_platform"]
 lock_version = "4.4.1"
-content_hash = "sha256:c198e8c0006619c3949610727b82f03fb6aec96fd331a888cc063e3ad5157ac4"
+content_hash = "sha256:05569684104aafb40232bfc3ee6da4304c90e053b54193aa5f776176954205f9"
 
 [[package]]
 name = "accelerate"
@@ -1143,6 +1143,20 @@ summary = "Clean single-source support for Python 3 and 2"
 files = [
     {file = "future-1.0.0-py3-none-any.whl", hash = "sha256:929292d34f5872e70396626ef385ec22355a1fae8ad29e1a734c3e43f9fbc216"},
     {file = "future-1.0.0.tar.gz", hash = "sha256:bd2968309307861edae1458a4f8a4f3598c03be43b97521076aebf5d94c07b05"},
+]
+
+[[package]]
+name = "galore-torch"
+version = "1.0"
+summary = "GaLore: Memory-Efficient LLM Training by Gradient Low-Rank Projection"
+dependencies = [
+    "bitsandbytes",
+    "torch",
+    "transformers",
+]
+files = [
+    {file = "galore-torch-1.0.tar.gz", hash = "sha256:469f793a0ae1c29cc42d9ba4550fed66983936cb50eccb46b06fbd16cfde40b9"},
+    {file = "galore_torch-1.0-py3-none-any.whl", hash = "sha256:7339bd6f6ea4557c5c9ae58026d67414bba2a0c7a7e7f1d69a05514ff565dd20"},
 ]
 
 [[package]]
@@ -4995,14 +5009,6 @@ dependencies = [
 files = [
     {file = "torch_pitch_shift-1.2.4-py3-none-any.whl", hash = "sha256:6cde2bddd7388e6da05e354fb84cf8e95a33e79d196e4c8ebd655faa4296cc42"},
     {file = "torch_pitch_shift-1.2.4.tar.gz", hash = "sha256:c173fc808184a684c1ecd99d5744573e55a667f238e2268adaf15c9467d99db9"},
-]
-
-[[package]]
-name = "torch-tensorrt"
-version = "0.0.0.post1"
-summary = ""
-files = [
-    {file = "torch-tensorrt-0.0.0.post1.tar.gz", hash = "sha256:ebe119f7783ebd4ef4e44815c0a3014941172a2deb4f325ffc410369891138d7"},
 ]
 
 [[package]]
