@@ -19,6 +19,11 @@ class Model(BaseLightningModule):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.tokenizer = get_tokenizer()
+        self.optimizer_dict = None
+        self.scheduler_dict = None
+        self.optimizer_state_checkpoints = None
+        self.p2name_dict = None
+        self.name2p_dict = None
 
     # pylint: disable-next=arguments-differ
     def forward(self, ret):
@@ -158,7 +163,9 @@ class Model(BaseLightningModule):
 
         return result
 
-    def configure_optimizers(self):  # noqa:C901
+    def configure_optimizers(  # noqa:C901 pylint: disable=too-many-branches, too-many-locals
+        self,
+    ):
         config_opt = self.config.config_optimizers
         if config_opt.optimizer == "galore":
             galore_params = []
@@ -177,6 +184,8 @@ class Model(BaseLightningModule):
 
             optimizer_dict = {}
             scheduler_dict = {}
+            name2p_dict = {}
+            p2name_dict = {}
 
             # define a hook function to update the parameter p during the backward pass
             def optimizer_hook(p):
@@ -186,7 +195,7 @@ class Model(BaseLightningModule):
                 optimizer_dict[p].zero_grad()
                 scheduler_dict[p].step()
 
-            for p in self.parameters():
+            for name, p in self.named_parameters():
                 if p.requires_grad:
                     if id(p) in id_galore_params:
                         optimizer_dict[p] = GaLoreAdamW8bit(
@@ -213,7 +222,30 @@ class Model(BaseLightningModule):
 
                     # Register the hook onto every parameter
                     p.register_post_accumulate_grad_hook(optimizer_hook)
-            return []
+                    name2p_dict[name] = p
+                    p2name_dict[p] = name
+
+            if self.optimizer_state_checkpoints is not None:
+                for name in self.optimizer_state_checkpoints["optimizer"].keys():
+                    p = name2p_dict[name]
+                    optimizer_dict[p].load_state_dict(
+                        self.optimizer_state_checkpoints["optimizer"][name]
+                    )
+                    # hack around for galore saving tensors inside a non-module object
+                    for v in optimizer_dict[p].state.values():
+                        if "projector" in v and hasattr(v["projector"], "ortho_matrix"):
+                            v["projector"].ortho_matrix = v[
+                                "projector"
+                            ].ortho_matrix.to(p.device)
+                    scheduler_dict[p].load_state_dict(
+                        self.optimizer_state_checkpoints["scheduler"][name]
+                    )
+
+            self.optimizer_dict = optimizer_dict
+            self.scheduler_dict = scheduler_dict
+            self.name2p_dict = name2p_dict
+            self.p2name_dict = p2name_dict
+            return None
 
         if config_opt.optimizer.lower() == "adam":
             # NOTE: optimizer frequency messes up feature loss
@@ -263,3 +295,19 @@ class Model(BaseLightningModule):
                         k.replace(f"{replace_k}.", f"{replace_k}_clone.")
                     ] = checkpoint["state_dict"][k]
         checkpoint["state_dict"] = new_state_dict
+        self.optimizer_state_checkpoints = {
+            "optimizer": checkpoint["optimizer_state"],
+            "scheduler": checkpoint["scheduler_state"],
+        }
+
+    def on_save_checkpoint(self, checkpoint):
+        if self.optimizer_dict is not None:
+            checkpoint["optimizer_state"] = {
+                self.p2name_dict[k]: v.state_dict()
+                for k, v in self.optimizer_dict.items()
+            }
+            checkpoint["scheduler_state"] = {
+                self.p2name_dict[k]: v.state_dict()
+                for k, v in self.scheduler_dict.items()
+            }
+        return checkpoint

@@ -1,4 +1,4 @@
-batch_size: 2
+batch_size: 1
 data_module:
   _target_: speechllm.data.pipeline.DataModule
   train_dataloader_args:
