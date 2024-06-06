@@ -20,7 +20,7 @@ def find_all_linear_names(model):
 
 
 def constructor(
-    lora_alpha=64, lora_rank=32, unsloth=True, gradient_checkpointing=False, lora=False
+    lora_alpha=64, lora_rank=32, unsloth=True, gradient_checkpointing=True, lora=False
 ):
     if lora:
         if unsloth:
@@ -62,7 +62,9 @@ def constructor(
             )
             model = LlamaForCausalLM.from_pretrained(
                 "fnlp/AnyGPT-chat",
-                torch_dtype=torch.bfloat16,
+                torch_dtype=(
+                    torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+                ),
                 quantization_config=bnb_config,
                 attn_implementation="flash_attention_2",
                 device_map="auto",
@@ -95,16 +97,12 @@ def constructor(
             model, _ = FastLanguageModel.from_pretrained(
                 model_name="fnlp/AnyGPT-chat",
                 max_seq_length=2048,
-                dtype=torch.bfloat16,
+                dtype=(
+                    torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+                ),
                 load_in_4bit=False,
                 device_map="auto",
                 trust_remote_code=True,
-            )
-            model = FastLanguageModel.get_peft_model(
-                model,
-                use_gradient_checkpointing=(
-                    "unsloth" if gradient_checkpointing else False
-                ),
             )
             FastLanguageModel.for_training(
                 model, use_gradient_checkpointing=gradient_checkpointing
@@ -112,8 +110,9 @@ def constructor(
         else:
             model = LlamaForCausalLM.from_pretrained(
                 "fnlp/AnyGPT-chat",
-                # torch_dtype=torch.bfloat16,
-                load_in_8bit=True,
+                torch_dtype=(
+                    torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+                ),
                 attn_implementation="flash_attention_2",
                 device_map="auto",
                 use_cache=False,
