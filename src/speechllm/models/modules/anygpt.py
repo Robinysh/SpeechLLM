@@ -105,7 +105,8 @@ def constructor(
                 trust_remote_code=True,
             )
             FastLanguageModel.for_training(
-                model, use_gradient_checkpointing=gradient_checkpointing
+                model,
+                use_gradient_checkpointing=False,  # Incompatible with per layer weight update
             )
         else:
             model = LlamaForCausalLM.from_pretrained(
@@ -117,8 +118,6 @@ def constructor(
                 device_map="auto",
                 use_cache=False,
             )
-            if gradient_checkpointing:
-                model.gradient_checkpointing_enable()
 
     def forward(model_input):
         lm_output = model(**model_input)
