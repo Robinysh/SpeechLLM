@@ -1,3 +1,5 @@
+from functools import partial
+
 import bitsandbytes as bnb
 import torch
 from galore_torch import GaLoreAdamW8bit
@@ -188,13 +190,16 @@ class Model(BaseLightningModule):
             p2name_dict = {}
 
             # define a hook function to update the parameter p during the backward pass
-            def optimizer_hook(p):
+            def optimizer_hook(p, log_lr=False):
                 if p.grad is None:
                     return
                 optimizer_dict[p].step()
                 optimizer_dict[p].zero_grad()
                 scheduler_dict[p].step()
+                if log_lr:
+                    reporter.report("lr", optimizer_dict[p].param_groups[0]["lr"])
 
+            lr_logged = False
             for name, p in self.named_parameters():
                 if p.requires_grad:
                     if id(p) in id_galore_params:
@@ -203,7 +208,7 @@ class Model(BaseLightningModule):
                                 {
                                     "params": p,
                                     "rank": 128,
-                                    "update_proj_gap": 200,
+                                    "update_proj_gap": 1000,
                                     "scale": 0.25,
                                     "proj_type": "std",
                                 }
@@ -214,14 +219,22 @@ class Model(BaseLightningModule):
                         optimizer_dict[p] = bnb.optim.Adam8bit(
                             [p], lr=config_opt.learning_rate
                         )
-
-                    scheduler_dict[p] = NoamLR(
-                        optimizer_dict[p],
-                        config_opt.warmup_step,
+                    scheduler_dict[p] = (
+                        torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+                            optimizer_dict[p], 10000, 2
+                        )
                     )
 
+                    # scheduler_dict[p] = NoamLR(
+                    #    optimizer_dict[p],
+                    #    config_opt.warmup_step,
+                    # )
+
                     # Register the hook onto every parameter
-                    p.register_post_accumulate_grad_hook(optimizer_hook)
+                    p.register_post_accumulate_grad_hook(
+                        partial(optimizer_hook, log_lr=not lr_logged)
+                    )
+                    lr_logged = True
                     name2p_dict[name] = p
                     p2name_dict[p] = name
 
