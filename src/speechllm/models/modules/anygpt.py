@@ -26,7 +26,7 @@ def constructor(
     lora_alpha=64,
     lora_rank=32,
     unsloth=True,
-    gradient_checkpointing=True,
+    gradient_checkpointing=False,
     lora=False,
     offline=False,
     model_fpath=None,

@@ -35,7 +35,9 @@ def log_audio(audio):
 
 
 @cache
-def get_speech_tokens_models(fpath="/data3/robinysh/models/"):
+def get_speech_tokens_models(fpath=None):
+    if fpath is None:
+        fpath = "/data3/robinysh/models/"
     fpath = Path(fpath)
     soundstorm = load_soundstorm(fpath / "soundstorm/speechtokenizer_soundstorm_mls.pt")
     speech_tokenizer = SpeechTokenizer.load_from_checkpoint(
