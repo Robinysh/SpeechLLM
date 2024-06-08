@@ -1,3 +1,5 @@
+from functools import cache
+
 from transformers import LlamaTokenizer
 
 
@@ -13,11 +15,13 @@ def tokenize_func(sentence, tokenizer):
     return result
 
 
-def get_tokenizer():
+@cache
+def get_tokenizer(offline=False, model_fpath=None):
     tokenizer = LlamaTokenizer.from_pretrained(
-        "fnlp/AnyGPT-chat",
+        offline and model_fpath or "fnlp/AnyGPT-chat",
         # model_max_length=training_args.model_max_length,
         padding_side="left",
+        local_files_only=offline,
         use_fast=False,
     )
     # pylint: disable=pointless-string-statement

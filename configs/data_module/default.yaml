@@ -8,6 +8,8 @@ data_module:
       _target_: speechllm.data.collate.collate
       tokenizer:
         _target_: speechllm.data.utils.get_tokenizer
+        model_fpath: ${paths.pretrained_models}/AnyGPT-chat
+        offline: ${offline}
     drop_last: true
     num_workers: ${data_module.num_workers}
     shuffle: true
@@ -19,6 +21,8 @@ data_module:
       _target_: speechllm.data.collate.collate
       tokenizer:
         _target_: speechllm.data.utils.get_tokenizer
+        model_fpath: ${paths.pretrained_models}/AnyGPT-chat
+        offline: ${offline}
     drop_last: true
     num_workers: ${data_module.num_workers}
     shuffle: true
@@ -26,13 +30,13 @@ data_module:
 num_workers: 16
 train_dataset:
   _target_: speechllm.data.pipeline.hf_pipeline
-  cache_dir: /data3/robinysh/cache/huggingface/
+  cache_dir: ${paths.dataset_cache}
   database: ${database.train}
   num_workers: ${data_module.num_workers}
   stage: train
 val_dataset:
   _target_: speechllm.data.pipeline.hf_pipeline
-  cache_dir: /data3/robinysh/cache/huggingface/
+  cache_dir: ${paths.dataset_cache}
   database: ${database.val}
   num_workers: ${data_module.num_workers}
   stage: val

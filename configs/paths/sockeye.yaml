@@ -1,0 +1,4 @@
+checkpoint: ${oc.env:HOME}/scratch/checkpoints/${project_name}/${run_name}/
+dataset_cache: ${oc.env:HOME}/scratch/cache/huggingface/
+dataset_root: ${oc.env:HOME}/scratch/GigaSpeech
+pretrained_models: ${oc.env:SLURM_TMPDIR}

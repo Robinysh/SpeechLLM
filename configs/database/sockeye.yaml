@@ -1,0 +1,10 @@
+train:
+  audio: ${oc.env:HOME}/scratch/GigaSpeech/audio_pairs/
+  metadata: ${oc.env:HOME}/scratch/GigaSpeech/train_files.txt
+  tokens: ${oc.env:HOME}/scratch/GigaSpeech/tokens/
+  transcript: ${oc.env:HOME}/scratch/GigaSpeech/dialogue_pairs/
+val:
+  audio: ${oc.env:HOME}/scratch/GigaSpeech/audio_pairs/
+  metadata: ${oc.env:HOME}/scratch/GigaSpeech/test_files.txt
+  tokens: ${oc.env:HOME}/scratch/GigaSpeech/tokens/
+  transcript: ${oc.env:HOME}/scratch/GigaSpeech/dialogue_pairs/

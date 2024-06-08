@@ -4,4 +4,8 @@ lossfuncs: ${losses}
 model: ${model}
 optimizer_order:
   - default
+tokenizer:
+  _target_: speechllm.data.utils.get_tokenizer
+  model_fpath: ${paths.pretrained_models}/AnyGPT-chat
+  offline: ${offline}
 train_stage: ${train_stage}

@@ -1,4 +1,5 @@
 from functools import partial
+from pathlib import Path
 
 import bitsandbytes as bnb
 import torch
@@ -8,7 +9,6 @@ from lightningtools.trainer import BaseLightningModule
 from lightningtools.utils import NoamLR, detach_any
 
 import speechllm.logger  # noqa pylint: disable=unused-import
-from speechllm.data.utils import get_tokenizer
 
 # logger.remove()
 # logger.add(sys.stderr, level="INFO")
@@ -18,9 +18,9 @@ torch.set_float32_matmul_precision("medium")
 
 # pylint: disable-next=too-many-ancestors
 class Model(BaseLightningModule):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, tokenizer, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.tokenizer = get_tokenizer()
+        self.tokenizer = tokenizer
         self.optimizer_dict = None
         self.scheduler_dict = None
         self.optimizer_state_checkpoints = None
@@ -88,9 +88,16 @@ class Model(BaseLightningModule):
 
     # pylint: disable-next=unused-argument
     def log_eval(self, batch, model_output, model_inference_output):
+        if self.config.paths.pretrained_models is not None:
+            decoder_fpath = (
+                Path(self.config.paths.pretrained_models) / "AnyGPT-speech-modules"
+            )
+        else:
+            decoder_fpath = None
         reporter.report(
             "audio/sample_prediction",
             model_inference_output,
+            decoder_fpath=decoder_fpath,
             tag="speechtokens",
         )
 

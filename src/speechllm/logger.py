@@ -35,21 +35,19 @@ def log_audio(audio):
 
 
 @cache
-def get_speech_tokens_models():
-    soundstorm = load_soundstorm(
-        "/data3/robinysh/models/soundstorm/speechtokenizer_soundstorm_mls.pt"
-    )
-    model_fpath = Path("/data3/robinysh/models/speechtokenizer")
+def get_speech_tokens_models(fpath="/data3/robinysh/models/"):
+    fpath = Path(fpath)
+    soundstorm = load_soundstorm(fpath / "soundstorm/speechtokenizer_soundstorm_mls.pt")
     speech_tokenizer = SpeechTokenizer.load_from_checkpoint(
-        model_fpath / "config.json", model_fpath / "ckpt.dev"
+        fpath / "speechtokenizer/config.json", fpath / "speechtokenizer/ckpt.dev"
     )
     soundstorm = torch.compile(soundstorm, backend="onnxrt")
     speech_tokenizer = torch.compile(speech_tokenizer, backend="onnxrt")
     return soundstorm, speech_tokenizer
 
 
-def log_speech_tokens(tokens):
-    soundstorm, speech_tokenizer = get_speech_tokens_models()
+def log_speech_tokens(tokens, decoder_fpath=None):
+    soundstorm, speech_tokenizer = get_speech_tokens_models(decoder_fpath)
     sample_tokens = tokens[0]
     speech_code = re.search("(?<=<sosp>).*(?=<eosp>)", sample_tokens)
     audio = []

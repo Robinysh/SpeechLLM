@@ -76,7 +76,8 @@ start.shell = "pdm run lightning_trainer"
 #data-generate.shell = "if [ -e .env ]; then pdm run python src/speechllm/data_generation/main.py; else echo 'Make a copy of .env from .env.sample before you start.'; fi"
 data-generate.env_file=".env"
 data-generate.shell = "pdm run python src/speechllm/data_generation/main.py"
-pre_install.shell = "export CMAKE_ARGS='-DLLAMA_CUBLAS=on' FORCE_CMAKE=1"
+pre_install.shell = "export CMAKE_ARGS='-DLLAMA_CUBLAS=on' FORCE_CMAKE=1 CFLAGS='-fPIC' CXX_FLAGS='-fPIC'"
+install.env = {CMAKE_ARGS="-DLLAMA_CUBLAS=on", FORCE_CMAKE=1, CFLAGS="-fPIC", CXX_FLAGS="-fPIC"}
 llm_server.shell = "python -m vllm.entrypoints.openai.api_server --model astronomer/Llama-3-8B-Instruct-GPTQ-8-Bit --gpu-memory-utilization 0.8 --dtype=half"
 
 [tool.pdm.options]

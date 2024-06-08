@@ -1,10 +1,10 @@
 train:
-  audio: /data3/public/GigaSpeech/processed/audio_pairs/
-  metadata: /data3/public/GigaSpeech/processed/train_files.txt
-  tokens: /data3/public/GigaSpeech/processed/tokens/
-  transcript: /data3/public/GigaSpeech/processed/dialogue_pairs/
+  audio: ${paths.dataset_root}/audio_pairs/
+  metadata: ${paths.dataset_root}/train_files.txt
+  tokens: ${paths.dataset_root}/tokens/
+  transcript: ${paths.dataset_root}/dialogue_pairs/
 val:
-  audio: /data3/public/GigaSpeech/processed/audio_pairs/
-  metadata: /data3/public/GigaSpeech/processed/test_files.txt
-  tokens: /data3/public/GigaSpeech/processed/tokens/
-  transcript: /data3/public/GigaSpeech/processed/dialogue_pairs/
+  audio: ${paths.dataset_root}/audio_pairs/
+  metadata: ${paths.dataset_root}/test_files.txt
+  tokens: ${paths.dataset_root}/tokens/
+  transcript: ${paths.dataset_root}/dialogue_pairs/

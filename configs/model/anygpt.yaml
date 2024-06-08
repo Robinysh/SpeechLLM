@@ -4,6 +4,8 @@ inference_pipeline:
 modules:
   anygpt:
     _target_: speechllm.models.modules.anygpt.constructor
+    model_fpath: ${paths.pretrained_models}/AnyGPT-chat
+    offline: ${offline}
 param_group:
   default:
     - anygpt

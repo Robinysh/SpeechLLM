@@ -4,6 +4,8 @@ from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 from transformers import BitsAndBytesConfig, LlamaForCausalLM
 from unsloth import FastLanguageModel
 
+from speechllm.utils import check_ampere_gpu
+
 
 def find_all_linear_names(model):
     # cls = bnb.nn.Linear8bitLt
@@ -19,17 +21,25 @@ def find_all_linear_names(model):
     return list(lora_module_names)
 
 
+# pylint: disable-next=too-many-arguments
 def constructor(
-    lora_alpha=64, lora_rank=32, unsloth=True, gradient_checkpointing=True, lora=False
+    lora_alpha=64,
+    lora_rank=32,
+    unsloth=True,
+    gradient_checkpointing=True,
+    lora=False,
+    offline=False,
+    model_fpath=None,
 ):
     if lora:
         if unsloth:
             model, _ = FastLanguageModel.from_pretrained(
-                model_name="fnlp/AnyGPT-chat",
+                model_name=offline and model_fpath or "fnlp/AnyGPT-chat",
                 max_seq_length=2048,
                 load_in_4bit=True,
                 device_map="auto",
                 trust_remote_code=True,
+                local_files_only=offline,
             )
             model = FastLanguageModel.get_peft_model(
                 model,
@@ -58,16 +68,17 @@ def constructor(
                 load_in_4bit=True,
                 bnb_4bit_quant_type="nf4",
                 bnb_4bit_use_double_quant=True,
-                bnb_4bit_compute_dtype=torch.bfloat16,
+                bnb_4bit_compute_dtype=(
+                    torch.bfloat16 if check_ampere_gpu() else torch.float16
+                ),
             )
             model = LlamaForCausalLM.from_pretrained(
-                "fnlp/AnyGPT-chat",
-                torch_dtype=(
-                    torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
-                ),
+                offline and model_fpath or "fnlp/AnyGPT-chat",
+                torch_dtype=(torch.bfloat16 if check_ampere_gpu() else torch.float16),
                 quantization_config=bnb_config,
                 attn_implementation="flash_attention_2",
                 device_map="auto",
+                local_files_only=offline,
             )
 
             model = prepare_model_for_kbit_training(model)
@@ -95,14 +106,13 @@ def constructor(
     else:
         if unsloth:
             model, _ = FastLanguageModel.from_pretrained(
-                model_name="fnlp/AnyGPT-chat",
+                model_name=offline and model_fpath or "fnlp/AnyGPT-chat",
                 max_seq_length=2048,
-                dtype=(
-                    torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
-                ),
+                dtype=(torch.bfloat16 if check_ampere_gpu() else torch.float16),
                 load_in_4bit=False,
                 device_map="auto",
                 trust_remote_code=True,
+                local_files_only=offline,
             )
             FastLanguageModel.for_training(
                 model,
@@ -110,13 +120,12 @@ def constructor(
             )
         else:
             model = LlamaForCausalLM.from_pretrained(
-                "fnlp/AnyGPT-chat",
-                torch_dtype=(
-                    torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
-                ),
+                offline and model_fpath or "fnlp/AnyGPT-chat",
+                torch_dtype=(torch.bfloat16 if check_ampere_gpu() else torch.float16),
                 attn_implementation="flash_attention_2",
                 device_map="auto",
                 use_cache=False,
+                local_files_only=offline,
             )
 
     def forward(model_input):

@@ -1,0 +1,20 @@
+import logging
+
+import torch
+
+
+def check_ampere_gpu():
+    """Check if the GPU supports NVIDIA Ampere or later and enable FP32 in PyTorch if it does."""
+
+    # Check if CUDA is available
+    if not torch.cuda.is_available():
+        logging.info("No GPU detected, running on CPU.")
+        return False
+
+    gpu_name = torch.cuda.get_device_name()
+
+    # Supported GPU models list - roughly based on https://en.wikipedia.org/wiki/Ampere_(microarchitecture)
+    supported_gpus = ["A100", "A6000", "RTX 30", "RTX 40", "A30", "A40", "H100", "B200"]
+
+    # Checking all GPUs
+    return any(supported_gpu in gpu_name for supported_gpu in supported_gpus)

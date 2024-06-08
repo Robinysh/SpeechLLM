@@ -1,7 +1,7 @@
 install:
 	git config core.hooksPath .githooks
 	- git submodule update --init --recursive --remote --force
-	pdm sync
+	CFLAGS="-fPIC" CXX_FLAGS="-fPIC" pdm sync --no-isolation
 
 reset:
 	git fetch

@@ -13,8 +13,10 @@ defaults:
   - trainer: default
   - lightning_module: default
   - logger: default
+  - paths: default
 last_ckpt: null
 load_optimizer: true
+offline: false
 project_name: speechllm
 run_name: null
 train_stage: default
