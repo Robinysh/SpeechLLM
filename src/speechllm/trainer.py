@@ -1,6 +1,6 @@
+import logging
 from functools import partial
 from pathlib import Path
-import logging
 
 import bitsandbytes as bnb
 import torch
@@ -30,7 +30,9 @@ class Model(BaseLightningModule):
 
     def on_train_start(self):
         if self.config.config_optimizers.optimizer == "galore":
-            logging.info('Activated GaLoRE fine-tuning, depending on your model size and hardware, the training might take a while before starting. Please be patient!')
+            logging.info(
+                "Activated GaLoRE fine-tuning, depending on your model size and hardware, the training might take a while before starting. Please be patient!"
+            )
 
     # pylint: disable-next=arguments-differ
     def forward(self, ret):
