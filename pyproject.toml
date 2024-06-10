@@ -49,6 +49,7 @@ dependencies = [
     "speechtokenizer>=0.1.2",
     "beartype==0.16.4",
     "galore-torch>=1.0",
+    "click>=8.1.7",
 ]
 requires-python = ">=3.10.0,<3.12"
 readme = "README.md"
@@ -78,7 +79,7 @@ data-generate.env_file=".env"
 data-generate.shell = "pdm run python src/speechllm/data_generation/main.py"
 pre_install.shell = "export CMAKE_ARGS='-DLLAMA_CUBLAS=on' FORCE_CMAKE=1 CFLAGS='-fPIC' CXX_FLAGS='-fPIC'"
 install.env = {CMAKE_ARGS="-DLLAMA_CUBLAS=on", FORCE_CMAKE=1, CFLAGS="-fPIC", CXX_FLAGS="-fPIC"}
-llm_server.shell = "python -m vllm.entrypoints.openai.api_server --model astronomer/Llama-3-8B-Instruct-GPTQ-8-Bit --gpu-memory-utilization 0.8 --dtype=half"
+llm_server.shell = "python -m vllm.entrypoints.openai.api_server --model TheBloke/Mixtral_11Bx2_MoE_19B-AWQ --gpu-memory-utilization 0.8 --dtype=half"
 
 [tool.pdm.options]
 add = ["--no-isolation"]

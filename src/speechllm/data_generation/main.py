@@ -6,6 +6,7 @@ from speechllm.data_generation.processes import (
     SpeechTokenizerGenerator,
     add_cols,
     split_dialogues,
+    Diarizer,
 )
 from speechllm.data_generation.speechcolab.datasets.gigaspeech import GigaSpeech
 
@@ -34,6 +35,7 @@ def print_row(row):
 @click.option("--nnodes", default=1)
 @click.option("--node_id", default=0)
 def main(data_path, output_path, subset, nnodes, node_id):
+    print(f'Running job {node_id} out of {nnodes} jobs')
     gigaspeech = GigaSpeech(data_path).audios(subset)
     gigaspeech = [x for i, x in enumerate(gigaspeech) if i % nnodes == node_id]
     # pyarrow is quite restrictive in terms of what it can serialize
@@ -60,10 +62,12 @@ def main(data_path, output_path, subset, nnodes, node_id):
     # ds = ds.map(AudioEnhancer, num_gpus=1, concurrency=1)
     # ds = ds.map(generate_hubert_embs)
     # write metadata.tsv
-    # ds = ds.map(Diarizer, concurrency=8,  num_gpus=0.5)
+    ds = ds.map(Diarizer, concurrency=4,  num_gpus=0.25)
+    #ds = ds.map(Diarizer, concurrency=2,  num_gpus=0.5)
+    #ds = ds.map(Diarizer, concurrency=2)
     # ds = ds.map(DialogueFilter, concurrency=4)
-    ds = ds.map(split_dialogues)
-    ds = ds.map(SpeechTokenizerGenerator, concurrency=2, num_gpus=0.5)
+    #ds = ds.map(split_dialogues)
+    #ds = ds.map(SpeechTokenizerGenerator, concurrency=2, num_gpus=0.5)
     ds.materialize()
 
 
