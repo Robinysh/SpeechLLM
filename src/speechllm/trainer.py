@@ -33,6 +33,7 @@ class Model(BaseLightningModule):
             logging.info(
                 "Activated GaLoRE fine-tuning, depending on your model size and hardware, the training might take a while before starting. Please be patient!"
             )
+            self.trainer.fit_loop.epoch_loop.manual_optimization.optim_step_progress.increment_completed()
 
     # pylint: disable-next=arguments-differ
     def forward(self, ret):
@@ -117,7 +118,8 @@ class Model(BaseLightningModule):
         lr_scheduler = self.lr_schedulers()
         if lr_scheduler is not None:
             lr_scheduler.step()
-        self.trainer.fit_loop.epoch_loop.manual_optimization.optim_step_progress.increment_completed()
+        if self.config.config_optimizers.optimizer == "galore":
+            self.trainer.fit_loop.epoch_loop.manual_optimization.optim_step_progress.increment_completed()
 
     def on_validation_batch_start(self, *args, **kwargs):
         # on_batch_start does not work
