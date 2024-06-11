@@ -48,8 +48,9 @@ dependencies = [
     "pycryptodome>=3.20.0",
     "speechtokenizer>=0.1.2",
     "beartype==0.16.4",
-    "galore-torch>=1.0",
     "click>=8.1.7",
+    "linetimer>=0.1.5",
+    "galore-torch @ git+https://github.com/Robinysh/GaLore",
 ]
 requires-python = ">=3.10.0,<3.12"
 readme = "README.md"

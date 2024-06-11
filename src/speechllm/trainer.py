@@ -222,7 +222,7 @@ class Model(BaseLightningModule):
                                 {
                                     "params": p,
                                     "rank": 128,
-                                    "update_proj_gap": 1000,
+                                    "update_proj_gap": 250,
                                     "scale": 0.25,
                                     "proj_type": "std",
                                 }

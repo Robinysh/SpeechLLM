@@ -5,7 +5,7 @@
 groups = ["default"]
 strategy = ["cross_platform"]
 lock_version = "4.4.1"
-content_hash = "sha256:15c6dd7d9d5cea370f67ce51d356e2863d3500a6fbc343581004be6844971ccd"
+content_hash = "sha256:beadcefc4736beacfd41aaed094f51cb9f75f6c38e33538d065dfc99777ae014"
 
 [[package]]
 name = "accelerate"
@@ -1148,15 +1148,13 @@ files = [
 [[package]]
 name = "galore-torch"
 version = "1.0"
+git = "https://github.com/Robinysh/GaLore"
+revision = "1e2a1dbeccc5f9322f25a9848a943837ce12b600"
 summary = "GaLore: Memory-Efficient LLM Training by Gradient Low-Rank Projection"
 dependencies = [
     "bitsandbytes",
     "torch",
     "transformers",
-]
-files = [
-    {file = "galore-torch-1.0.tar.gz", hash = "sha256:469f793a0ae1c29cc42d9ba4550fed66983936cb50eccb46b06fbd16cfde40b9"},
-    {file = "galore_torch-1.0-py3-none-any.whl", hash = "sha256:7339bd6f6ea4557c5c9ae58026d67414bba2a0c7a7e7f1d69a05514ff565dd20"},
 ]
 
 [[package]]
@@ -2114,6 +2112,15 @@ dependencies = [
     "tqdm",
     "wandb",
     "yq",
+]
+
+[[package]]
+name = "linetimer"
+version = "0.1.5"
+summary = "A small Python class to quickly measure the time taken while executing a block of indented lines"
+files = [
+    {file = "linetimer-0.1.5-py3-none-any.whl", hash = "sha256:18f917bf9c3afe2ba2375dbf97fd01189c1967fe4c49382036b03201e03c2889"},
+    {file = "linetimer-0.1.5.tar.gz", hash = "sha256:f9723860bbbeae05e4e1383b237e5b73f98c71b73e50dc8c2856a0580269752b"},
 ]
 
 [[package]]
