@@ -39,10 +39,12 @@ def get_speech_tokens_models(fpath=None):
     if fpath is None:
         fpath = "/data3/robinysh/models/"
     fpath = Path(fpath)
-    soundstorm = load_soundstorm(fpath / "soundstorm/speechtokenizer_soundstorm_mls.pt")
+    soundstorm = load_soundstorm(
+        fpath / "soundstorm/speechtokenizer_soundstorm_mls.pt"
+    ).float()
     speech_tokenizer = SpeechTokenizer.load_from_checkpoint(
         fpath / "speechtokenizer/config.json", fpath / "speechtokenizer/ckpt.dev"
-    )
+    ).float()
     soundstorm = torch.compile(soundstorm, backend="onnxrt")
     speech_tokenizer = torch.compile(speech_tokenizer, backend="onnxrt")
     return soundstorm, speech_tokenizer
