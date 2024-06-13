@@ -1,0 +1,22 @@
+config_optimizers:
+  decay_step: 105000
+  learning_rate: 2.0e-05
+  optimizer: galore
+  warmup_step: 1000
+  weight_decay: 0
+defaults:
+  - database: default
+  - data_module: text_conversation_interface
+  - model: anygpt
+  - losses: default
+  - callbacks: default
+  - trainer: default
+  - lightning_module: default
+  - logger: default
+  - paths: default
+last_ckpt: null
+load_optimizer: true
+offline: false
+project_name: speechllm
+run_name: null
+train_stage: default

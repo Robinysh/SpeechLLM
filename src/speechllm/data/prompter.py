@@ -31,3 +31,13 @@ class Prompter:
 
         prompt = f"{user_name}: Let's chat.{input_tokens}{user_end} {chatbot_name}: {output_tokens}{chatbot_end}"
         return prompt
+
+    def generate_template_with_text_interface(
+        self, input_tokens, output_tokens=None, output_transcript=None
+    ):
+        if output_tokens is None:
+            prompt = f"{user_name}: Let's chat.{input_tokens}{user_end} {chatbot_name}: <sosp>"
+            return prompt
+        assert output_transcript is not None
+        prompt = f"{user_name}: Let's chat.{input_tokens}{user_end} {chatbot_name}: {output_transcript} {output_tokens}{chatbot_end}"
+        return prompt
