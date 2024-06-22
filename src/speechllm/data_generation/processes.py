@@ -53,23 +53,19 @@ class AudioEnhancer:
 
         fpath = Path(row["data_path"]) / row["path"]
         if not fpath.exists():
-            # print(f"{fpath} not found, skipping.")
             return row
 
-        # save_path = Path(args.dst_dir) / "enhanced" / fpath.with_suffix(".wav").name
         save_path = (
             Path(row["output_path"]) / "enhanced" / fpath.with_suffix(".flac").name
         )
         row["enhanced_audio"] = str(save_path)
         save_path.parent.mkdir(parents=True, exist_ok=True)
         if save_path.exists():
-            # print(f"{fpath} already enhanced.")
             return row
 
         dwav, sampling_rate = torchaudio.load(fpath)
         dwav = dwav.mean(dim=0)
 
-        # print(f"Enhancing {fpath}.")
         wav, new_sr = enhance(
             dwav,
             sampling_rate,
@@ -82,7 +78,6 @@ class AudioEnhancer:
         )
         wav = wav.cpu().numpy()
 
-        # write(save_path, new_sr, wav)
         sf.write(save_path, wav, new_sr)
         return row
 
@@ -117,10 +112,8 @@ class Diarizer:
         self.pipeline.to(torch.device("cuda:0"))
 
     def __call__(self, row):
-        # fname = Path(row['data_path'])/'enhanced'/Path(row['path']).with_suffix('.flac').name
         try:
             fname = Path(row["data_path"]) / Path(row["path"])
-            waveform, sample_rate = torchaudio.load(fname)
             save_path = (
                 Path(row["data_path"])
                 / "diarization"
@@ -129,6 +122,7 @@ class Diarizer:
             save_path.parent.mkdir(parents=True, exist_ok=True)
             if save_path.exists():
                 return row
+            waveform, sample_rate = torchaudio.load(fname)
 
             diarization = self.pipeline(
                 {"waveform": waveform, "sample_rate": sample_rate}
@@ -154,21 +148,31 @@ def split_dialogues(row):
             return row
 
         save_path = Path(row["data_path"]) / AUDIO_PAIR_DIR / Path(row["path"]).stem
-        if save_path.exists():
-            return row
         save_path.mkdir(parents=True, exist_ok=True)
-        audio = AudioSegment.from_file(Path(row["data_path"]) / row["path"])
+        audio = None
         for i, (seg1, seg2) in enumerate(dialogue_data):
-            audio1 = audio[seg1["begin_time"] * 1000 : seg1["end_time"] * 1000]
-            audio2 = audio[seg2["begin_time"] * 1000 : seg2["end_time"] * 1000]
+            assert (
+                seg1["begin_time"] < seg1["end_time"]
+                and seg2["begin_time"] < seg2["end_time"]
+            )
             seg1_path = (save_path / f"{Path(row['path']).stem}_{i}_1").with_suffix(
                 ".opus"
             )
             seg2_path = (save_path / f"{Path(row['path']).stem}_{i}_2").with_suffix(
                 ".opus"
             )
-            audio1.export(seg1_path, format="opus")
-            audio2.export(seg2_path, format="opus")
+            if not seg1_path.exists():
+                if audio is None:
+                    audio = AudioSegment.from_file(Path(row["data_path"]) / row["path"])
+                audio1 = audio[seg1["begin_time"] * 1000 : seg1["end_time"] * 1000]
+                audio1.export(seg1_path, format="opus")
+            if not seg2_path.exists():
+                if audio is None:
+                    audio = AudioSegment.from_file(Path(row["data_path"]) / row["path"])
+                audio2 = audio[seg2["begin_time"] * 1000 : seg2["end_time"] * 1000]
+                audio2.export(seg2_path, format="opus")
+            assert os.path.getsize(seg2_path) > 200
+            assert os.path.getsize(seg2_path) > 200
     # pylint: disable=broad-except
     except Exception as e:
         print(row)
@@ -187,9 +191,9 @@ class DialogueFilter:
 
     def query_llm(self, query):
         # model="heyholetsgo/Nous-Hermes-2-Mistral-7B-DPO-AWQ"
-        # model = "TheBloke/Mixtral_11Bx2_MoE_19B-GPTQ"
+        model = "TheBloke/Mixtral_11Bx2_MoE_19B-GPTQ"
         # model="casperhansen/llama-3-8b-instruct-awq"
-        model = "astronomer/Llama-3-8B-Instruct-GPTQ-8-Bit"
+        # model = "astronomer/Llama-3-8B-Instruct-GPTQ-8-Bit"
         # model="TheBloke/SauerkrautLM-UNA-SOLAR-Instruct-AWQ"
         # model="TheBloke/mistral-ft-optimized-1218-AWQ"
         # model="TheBloke/mistral-ft-optimized-1227-AWQ"
@@ -211,44 +215,6 @@ class DialogueFilter:
 
     def check_is_response(self, sent1, sent2, retries=3):
         for i in range(retries):
-            # response = self.query_llm(
-            #    f"""<s>[INST]
-            # The following sentences happens sequentially in a dialogue.
-            # Is the second sentence a response to the first sentence from another speaker that is likely to happen in a daily casual chatting?
-            # A mere continuation of the first sentence does not count as a response.
-            # Give an explanation and response yes or no. Answer no if you are unsure. Follow the format of the examples strictly.
-
-            # For example:
-            # 1. ITEMIZED .
-            # 2. SEARS ACTUALLY PROVIDED AN ENTIRELY SEPARATE CATALOG FOR THESE KIT .
-            # Explanation: [/INST]It is unclear what is the first sentence is about.
-            # Answer: no[INST]
-
-            # 1. AT 7:45 .
-            # 2. MHMM .
-            # Explanation: [/INST]The second sentence is directly answering the first sentence. It is also likely to be said by another speaker.
-            # Answer: yes[INST]
-
-            # 1. IN SOME NEIGHBORHOODS , A SEARS KIT HOME MIGHT BE THE ONLY HOUSE ON THE BLOCK WITH ELECTRICITY .
-            # 2. MEN AND WOMEN OF COLOR , AND SINGLE WOMEN WHO WOULD OTHERWISE NEVER HAVE A CHANCE OF BECOMING A HOMEOWNER
-            # Explanation: [/INST]The second sentence is merely a continuation of the first sentence.
-            # Answer: no[INST]
-
-            # 1. I NEED TO TRAVEL IN MAY .
-            # 2. AND , WHAT DAY IN MAY DID YOU WANT TO TRAVEL .
-            # Explanation: [/INST]The second sentence is asking for additional information from the first sentence.
-            # Answer: yes[INST]
-
-            # 1. MINE IS A LONG AND A SAD TALE !
-            # 2. SAID THE MOUSE , TURNING TO ALICE , AND SIGHING .
-            # Explanation: [/INST]Although they are from different speakers, the second sentence is not a response, but a narration. A response is also unlikely to start with the word 'SAID'.
-            # Answer: no[INST]
-
-            # 1. {sent1}
-            # 2. {sent2}
-            # Explanation: [/INST]
-            # """
-            # )
             try:
                 response = self.query_llm(
                     f"""
@@ -295,122 +261,131 @@ class DialogueFilter:
                 print(e)
         return False
 
-    # pylint: disable=too-many-branches,too-many-locals
+    # TODO simplify this fn
+    # pylint: disable=too-many-branches,too-many-locals,too-many-statements
     def __call__(self, row):  # noqa: C901
-        pairs = []
-        save_path = (
-            Path(row["data_path"]) / DIALOGUE_PAIR_DIR / Path(row["path"]).name
-        ).with_suffix(".json")
-        if save_path.exists():
-            return row
+        try:
+            pairs = []
+            save_path = (
+                Path(row["data_path"]) / DIALOGUE_PAIR_DIR / Path(row["path"]).name
+            ).with_suffix(".json")
+            if save_path.exists():
+                return row
 
-        diarization_path = (
-            Path(row["data_path"]) / "diarization" / Path(row["path"]).name
-        ).with_suffix(".pkl")
-        if not diarization_path.exists():
-            return row
+            diarization_path = (
+                Path(row["data_path"]) / "diarization" / Path(row["path"]).name
+            ).with_suffix(".pkl")
+            if not diarization_path.exists():
+                return row
 
-        with diarization_path.open("rb") as fp:
-            diarization = pickle.load(fp)
-        # ic(row["segments"])
-        segments = [dict(zip(x, y)) for x, y in row["segments"]]
+            with diarization_path.open("rb") as fp:
+                diarization = pickle.load(fp)
+            segments = [dict(zip(x, y)) for x, y in row["segments"]]
 
-        for seg in segments:
-            seg["begin_time"] = float(seg["begin_time"])
-            seg["end_time"] = float(seg["end_time"])
+            for seg in segments:
+                seg["begin_time"] = float(seg["begin_time"])
+                seg["end_time"] = float(seg["end_time"])
 
-        for j, (seg1, seg2) in enumerate(pairwise(segments)):
-            if seg2["begin_time"] - seg1["end_time"] > self.max_response_delay:
-                continue
-            dia_result1 = diarization.crop(
-                Segment(seg1["begin_time"], seg1["end_time"])
-            ).labels()
-            dia_result2 = diarization.crop(
-                Segment(seg2["begin_time"], seg2["end_time"])
-            ).labels()
-            if len(dia_result1) != 1 or len(dia_result2) != 1:
-                continue
-
-            if dia_result1[0] == dia_result2[0]:
-                continue
-
-            sent1 = seg1["text_tn"]
-            sent2 = seg2["text_tn"]
-            seg1_begin = seg1["begin_time"]
-            for backward_i in range(
-                j - 1, max(0, j - randint(1, self.max_rand_len)), -1
-            ):
-                seg1_backward = segments[backward_i]
-                dia_backward = diarization.crop(
-                    Segment(seg1_backward["begin_time"], seg1_backward["end_time"])
+            for j, (seg1, seg2) in enumerate(pairwise(segments)):
+                if seg2["begin_time"] - seg1["end_time"] > self.max_response_delay:
+                    continue
+                dia_result1 = diarization.crop(
+                    Segment(seg1["begin_time"], seg1["end_time"])
                 ).labels()
-                if len(dia_backward) != 1 or dia_backward[0] != dia_result1[0]:
-                    break
-                if (
-                    len(f'{seg1_backward["text_tn"]} {sent1}'.split(" "))
-                    > self.max_token
-                ):
-                    break
-                if (
-                    seg1["begin_time"] - seg1_backward["end_time"]
-                    > self.max_response_delay
-                ):
-                    break
-                seg1_begin = seg1_backward["begin_time"]
-                sent1 = f'{seg1_backward["text_tn"]} {sent1}'
-
-            seg2_end = seg2["end_time"]
-            for forward_i in range(
-                j + 2, min(len(segments), j + 1 + randint(1, self.max_rand_len))
-            ):
-                seg_forward = segments[forward_i]
-                dia_forward = diarization.crop(
-                    Segment(seg_forward["begin_time"], seg_forward["end_time"])
+                dia_result2 = diarization.crop(
+                    Segment(seg2["begin_time"], seg2["end_time"])
                 ).labels()
-                if len(dia_forward) != 1 or dia_forward[0] != dia_result2[0]:
-                    break
-                if len(f'{sent2} {seg_forward["text_tn"]}'.split(" ")) > self.max_token:
-                    break
-                if (
-                    seg_forward["begin_time"] - seg2["end_time"]
-                    > self.max_response_delay
+                if len(dia_result1) != 1 or len(dia_result2) != 1:
+                    continue
+
+                if dia_result1[0] == dia_result2[0]:
+                    continue
+
+                sent1 = seg1["text_tn"]
+                sent2 = seg2["text_tn"]
+                seg1_begin = seg1["begin_time"]
+                for backward_i in range(
+                    j - 1, max(0, j - randint(1, self.max_rand_len)), -1
                 ):
-                    break
-                seg2_end = seg_forward["end_time"]
-                sent2 = f'{sent2} {seg_forward["text_tn"]}'
+                    seg1_backward = segments[backward_i]
+                    dia_backward = diarization.crop(
+                        Segment(seg1_backward["begin_time"], seg1_backward["end_time"])
+                    ).labels()
+                    if len(dia_backward) != 1 or dia_backward[0] != dia_result1[0]:
+                        break
+                    if (
+                        len(f'{seg1_backward["text_tn"]} {sent1}'.split(" "))
+                        > self.max_token
+                    ):
+                        break
+                    if (
+                        seg1["begin_time"] - seg1_backward["end_time"]
+                        > self.max_response_delay
+                    ):
+                        break
+                    seg1_begin = seg1_backward["begin_time"]
+                    sent1 = f'{seg1_backward["text_tn"]} {sent1}'
 
-            is_response = self.check_is_response(sent1, sent2)
-            if not is_response:
-                continue
+                seg2_end = seg2["end_time"]
+                for forward_i in range(
+                    j + 2, min(len(segments), j + 1 + randint(1, self.max_rand_len))
+                ):
+                    seg_forward = segments[forward_i]
+                    dia_forward = diarization.crop(
+                        Segment(seg_forward["begin_time"], seg_forward["end_time"])
+                    ).labels()
+                    if len(dia_forward) != 1 or dia_forward[0] != dia_result2[0]:
+                        break
+                    if (
+                        len(f'{sent2} {seg_forward["text_tn"]}'.split(" "))
+                        > self.max_token
+                    ):
+                        break
+                    if (
+                        seg_forward["begin_time"] - seg2["end_time"]
+                        > self.max_response_delay
+                    ):
+                        break
+                    seg2_end = seg_forward["end_time"]
+                    sent2 = f'{sent2} {seg_forward["text_tn"]}'
 
-            # count += 1
-            pairs.append(
-                [
-                    {
-                        "begin_time": seg1_begin,
-                        "end_time": seg1["end_time"],
-                        "text_tn": sent1,
-                        "audio_parent": row["path"],
-                    },
-                    {
-                        "begin_time": seg2["begin_time"],
-                        "end_time": seg2_end,
-                        "text_tn": sent2,
-                        "audio_parent": row["path"],
-                    },
-                ]
-            )
+                is_response = self.check_is_response(sent1, sent2)
+                if not is_response:
+                    continue
 
-        save_path.parent.mkdir(exist_ok=True, parents=True)
-        with save_path.open("w") as out_file:
-            json.dump(pairs, out_file, sort_keys=True, indent=4, ensure_ascii=False)
+                pairs.append(
+                    [
+                        {
+                            "begin_time": seg1_begin,
+                            "end_time": seg1["end_time"],
+                            "text_tn": sent1,
+                            "audio_parent": row["path"],
+                        },
+                        {
+                            "begin_time": seg2["begin_time"],
+                            "end_time": seg2_end,
+                            "text_tn": sent2,
+                            "audio_parent": row["path"],
+                        },
+                    ]
+                )
+
+            save_path.parent.mkdir(exist_ok=True, parents=True)
+            with save_path.open("w") as out_file:
+                json.dump(pairs, out_file, sort_keys=True, indent=4, ensure_ascii=False)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            print("Error encountered")
+            print(row["path"])
+            print(e)
 
         return row
 
 
 class SpeechTokenizerGenerator:
     def __init__(self, device="cuda"):
-        model_fpath = Path("/data3/robinysh/models/speechtokenizer")
+        model_fpath = Path(
+            "/home/robinysh/scratch/models/AnyGPT-speech-modules/speechtokenizer"
+        )
         self.speech_tokenizer = (
             SpeechTokenizer.load_from_checkpoint(
                 model_fpath / "config.json", model_fpath / "ckpt.dev"
@@ -432,8 +407,6 @@ class SpeechTokenizerGenerator:
 
         audio_path = Path(row["data_path"]) / AUDIO_PAIR_DIR / Path(row["path"]).stem
         save_path = Path(row["data_path"]) / TOKENS_DIR / Path(row["path"]).stem
-        if save_path.exists():
-            return row
         save_path.mkdir(parents=True, exist_ok=True)
 
         for i, segments in enumerate(dialogue_data):
@@ -441,6 +414,8 @@ class SpeechTokenizerGenerator:
                 tokens_fpath = (
                     save_path / f"{Path(row['path']).stem}_{i}_{j + 1}"
                 ).with_suffix(".txt")
+                if tokens_fpath.exists():
+                    continue
                 audio_fpath = (
                     audio_path / f"{Path(row['path']).stem}_{i}_{j + 1}"
                 ).with_suffix(".opus")

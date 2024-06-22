@@ -2,7 +2,14 @@ import click
 import ray
 import torch
 
-from speechllm.data_generation.processes import Diarizer, add_cols
+from speechllm.data_generation.processes import (  # noqa pylint: disable=unused-import
+    DialogueFilter,
+    Diarizer,
+    Downloader,
+    SpeechTokenizerGenerator,
+    add_cols,
+    split_dialogues,
+)
 from speechllm.data_generation.speechcolab.datasets.gigaspeech import GigaSpeech
 
 
@@ -33,6 +40,10 @@ def main(data_path, output_path, subset, nnodes, node_id):
     print(f"Running job {node_id} out of {nnodes} jobs")
     gigaspeech = GigaSpeech(data_path).audios(subset)
     gigaspeech = [x for i, x in enumerate(gigaspeech) if i % nnodes == node_id]
+    gigaspeech = [x for x in gigaspeech if x["source"] != "audiobook"]
+    gigaspeech = [
+        x for x in gigaspeech if x["duration"] < 3600 * 5
+    ]  # filter audio longer than 5hrs for debug
     # pyarrow is quite restrictive in terms of what it can serialize
     # so we have to transform some fields
     for row in gigaspeech:
@@ -53,19 +64,17 @@ def main(data_path, output_path, subset, nnodes, node_id):
         fn_kwargs={"cols": {"data_path": data_path, "output_path": output_path}},
     )
     # ds = ds.map(print_row)
-    # ds = ds.map(Downloader, concurrency=4, fn_constructor_args={"data_path": data_path})
+    ds = ds.map(Downloader, concurrency=4, fn_constructor_args={"data_path": data_path})
     # ds = ds.map(AudioEnhancer, num_gpus=1, concurrency=1)
-    # ds = ds.map(generate_hubert_embs)
-    # write metadata.tsv
-    ds = ds.map(Diarizer, concurrency=4, num_gpus=0.25)
-    # ds = ds.map(Diarizer, concurrency=2,  num_gpus=0.5)
+    # ds = ds.map(Diarizer, concurrency=3, num_gpus=1/3)
+    ds = ds.map(Diarizer, concurrency=2, num_gpus=0.5)
     # ds = ds.map(Diarizer, concurrency=2)
-    # ds = ds.map(DialogueFilter, concurrency=4)
-    # ds = ds.map(split_dialogues)
-    # ds = ds.map(SpeechTokenizerGenerator, concurrency=2, num_gpus=0.5)
+    ds = ds.map(DialogueFilter, concurrency=4)
+    ds = ds.map(split_dialogues)
+    ds = ds.map(SpeechTokenizerGenerator, concurrency=2, num_gpus=1 / 2)
     ds.materialize()
 
 
 if __name__ == "__main__":
-    # pylint: disable=no-value-for-parameter
+    # pylint: disable-next=no-value-for-parameter
     main()
