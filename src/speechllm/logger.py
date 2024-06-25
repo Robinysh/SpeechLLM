@@ -4,10 +4,10 @@ from pathlib import Path
 
 import numpy as np
 import torch
+import wandb
 from lightningtools import reporter
 from speechtokenizer import SpeechTokenizer
 
-import wandb
 from speechllm.soundstorm_speechtokenizer.decode import decode_speech, load_soundstorm
 
 

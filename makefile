@@ -1,7 +1,13 @@
 install:
 	git config core.hooksPath .githooks
 	- git submodule update --init --recursive --remote --force
-	CFLAGS="-fPIC" CXX_FLAGS="-fPIC" pdm sync --no-isolation
+	CFLAGS="-fPIC" CXX_FLAGS="-fPIC" pdm sync --no-isolation -G cuda
+
+install-hpu:
+	git config core.hooksPath .githooks
+	- git submodule update --init --recursive --remote --force
+	CFLAGS="-fPIC" CXX_FLAGS="-fPIC" pdm sync --no-isolation -G hpu
+	HABANALABS_VIRTUAL_DIR='.venv' habanalabs-installer.sh install --type pytorch --venv -y
 
 reset:
 	git fetch

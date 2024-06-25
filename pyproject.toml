@@ -21,7 +21,6 @@ dependencies = [
     "transformers-stream-generator>=0.0.4",
     "optimum>=1.16.1",
     "packaging>=23.2",
-    "flash-attn>=2.5.6",
     "ninja>=1.11.1.1",
     "setuptools>=69.0.3",
     "jupyterlab>=4.2.0",
@@ -29,7 +28,6 @@ dependencies = [
     "soundfile>=0.12.1",
     "lightningtools @ git+https://github.com/flyingmilktea/lightningtools@raydata",
     "ray[data]>=2.9.1",
-    "bitsandbytes>=0.42.0",
     "auto-gptq>=0.6.0",
     "grpcio>=1.62.0",
     "pyannote-audio>=3.1.1",
@@ -41,7 +39,6 @@ dependencies = [
     "ipython>=8.24.0",
     "ipykernel>=6.29.4",
     "unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git",
-    "trl>=0.8.6",
     "peft>=0.10.0",
     "samplerate>=0.2.1",
     "ijson>=3.2.3",
@@ -56,12 +53,18 @@ requires-python = ">=3.10.0,<3.12"
 readme = "README.md"
 license = {text = "MIT"}
 
+[project.optional-dependencies]
+cuda = ["flash-attn>=2.5.6", "bitsandbytes>=0.42.0"]
+hpu = [
+    "lightning-habana>=1.5.0",
+]
+
 [build-system]
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
 [tool.pdm.scripts]
-start.env = {HYDRA_FULL_ERROR="1"}
+start.env = {HYDRA_FULL_ERROR="1", PT_HPU_LAZY_MODE="0"}
 start.env_file=".env"
 pdm-autoflake.shell = "git ls-files '*.py' | xargs -t pdm run autoflake --in-place --expand-star-imports --remove-all-unused-imports --ignore-init-module-imports"
 pdm-isort.shell = "git ls-files '*.py' | xargs -t pdm run isort -q"
@@ -79,7 +82,7 @@ start.shell = "pdm run python -m speechllm.main"
 data-generate.env_file=".env"
 data-generate.shell = "pdm run python src/speechllm/data_generation/main.py"
 pre_install.shell = "export CMAKE_ARGS='-DLLAMA_CUBLAS=on' FORCE_CMAKE=1 CFLAGS='-fPIC' CXX_FLAGS='-fPIC'"
-install.env = {CMAKE_ARGS="-DLLAMA_CUBLAS=on", FORCE_CMAKE=1, CFLAGS="-fPIC", CXX_FLAGS="-fPIC"}
+install.env = {CMAKE_ARGS="-DLLAMA_CUBLAS=on", FORCE_CMAKE="1", CFLAGS="-fPIC", CXX_FLAGS="-fPIC"}
 llm_server.shell = "python -m vllm.entrypoints.openai.api_server --model TheBloke/Mixtral_11Bx2_MoE_19B-GPTQ --gpu-memory-utilization 0.8 --dtype=half"
 
 [tool.pdm.options]

@@ -9,7 +9,11 @@ from lightningtools import reporter
 from lightningtools.trainer import BaseLightningModule
 from lightningtools.utils import NoamLR, detach_any
 
-import speechllm.logger  # noqa pylint: disable=unused-import
+import speechllm.logger  # noqa: F401 pylint: disable=unused-import
+from speechllm.utils import check_hpu
+
+logging.getLogger("habana_frameworks").setLevel(logging.WARNING)
+
 
 # logger.remove()
 # logger.add(sys.stderr, level="INFO")
@@ -181,102 +185,40 @@ class Model(BaseLightningModule):
 
         return result
 
-    def configure_optimizers(  # noqa:C901 pylint: disable=too-many-branches, too-many-locals
+    def configure_optimizers(
         self,
     ):
         config_opt = self.config.config_optimizers
         if config_opt.optimizer == "galore":
-            galore_params = []
-            target_modules_list = ["attn", "mlp"]
-            for module_name, module in self.named_modules():
-                if not isinstance(module, torch.nn.Linear):
-                    continue
-
-                if not any(
-                    target_key in module_name for target_key in target_modules_list
-                ):
-                    continue
-
-                galore_params.append(module.weight)
-            id_galore_params = [id(p) for p in galore_params]
-
-            optimizer_dict = {}
-            scheduler_dict = {}
-            name2p_dict = {}
-            p2name_dict = {}
-
-            # define a hook function to update the parameter p during the backward pass
-            def optimizer_hook(p, log_lr=False):
-                if p.grad is None:
-                    return
-                optimizer_dict[p].step()
-                optimizer_dict[p].zero_grad()
-                scheduler_dict[p].step()
-                if log_lr:
-                    reporter.report("lr", optimizer_dict[p].param_groups[0]["lr"])
-
-            lr_logged = False
-            for name, p in self.named_parameters():
-                if p.requires_grad:
-                    if id(p) in id_galore_params:
-                        optimizer_dict[p] = GaLoreAdamW8bit(
-                            [
-                                {
-                                    "params": p,
-                                    "rank": 128,
-                                    "update_proj_gap": 250,
-                                    "scale": 0.25,
-                                    "proj_type": "std",
-                                }
-                            ],
-                            lr=config_opt.learning_rate,
-                        )
-                    else:
-                        optimizer_dict[p] = bnb.optim.Adam8bit(
-                            [p], lr=config_opt.learning_rate
-                        )
-                    scheduler_dict[p] = (
-                        torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
-                            optimizer_dict[p], 10000, 2
-                        )
-                    )
-
-                    # scheduler_dict[p] = NoamLR(
-                    #    optimizer_dict[p],
-                    #    config_opt.warmup_step,
-                    # )
-
-                    # Register the hook onto every parameter
-                    p.register_post_accumulate_grad_hook(
-                        partial(optimizer_hook, log_lr=not lr_logged)
-                    )
-                    lr_logged = True
-                    name2p_dict[name] = p
-                    p2name_dict[p] = name
-
-            if self.optimizer_state_checkpoints is not None:
-                for name in self.optimizer_state_checkpoints["optimizer"].keys():
-                    p = name2p_dict[name]
-                    optimizer_dict[p].load_state_dict(
-                        self.optimizer_state_checkpoints["optimizer"][name]
-                    )
-                    # hack around for galore saving tensors inside a non-module object
-                    for v in optimizer_dict[p].state.values():
-                        if "projector" in v and hasattr(v["projector"], "ortho_matrix"):
-                            v["projector"].ortho_matrix = v[
-                                "projector"
-                            ].ortho_matrix.to(p.device)
-                    scheduler_dict[p].load_state_dict(
-                        self.optimizer_state_checkpoints["scheduler"][name]
-                    )
-
-            self.optimizer_dict = optimizer_dict
-            self.scheduler_dict = scheduler_dict
-            self.name2p_dict = name2p_dict
-            self.p2name_dict = p2name_dict
-            return None
+            return self.configure_galore(config_opt)
 
         if config_opt.optimizer.lower() == "adam":
+            if check_hpu():
+                # pylint: disable-next=import-outside-toplevel
+                from habana_frameworks.torch.hpex.optimizers import FusedAdamW
+
+                optimizer = FusedAdamW(
+                    self.param_group["default"],
+                    config_opt.learning_rate,
+                )
+
+                scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+                    optimizer, 10000, 2
+                )
+                lr_dict = {
+                    "scheduler": scheduler,
+                    "interval": "step",
+                    "monitor": "valid/loss",
+                    "strict": False,
+                    "name": "lr_dict_t",
+                }
+                return [
+                    {
+                        "optimizer": optimizer,
+                        "lr_scheduler": lr_dict,
+                    },
+                ]
+
             # NOTE: optimizer frequency messes up feature loss
             optimizer = bnb.optim.Adam8bit(
                 self.param_group["default"],
@@ -298,6 +240,91 @@ class Model(BaseLightningModule):
                 },
             ]
         raise ValueError(f"Unknown optimizer {config_opt.optimizer}")
+
+    def configure_galore(  # noqa: C901 pylint: disable=too-many-locals
+        self, config_opt
+    ):
+        galore_params = []
+        target_modules_list = ["attn", "mlp"]
+        for module_name, module in self.named_modules():
+            if not isinstance(module, torch.nn.Linear):
+                continue
+
+            if not any(target_key in module_name for target_key in target_modules_list):
+                continue
+
+            galore_params.append(module.weight)
+        id_galore_params = [id(p) for p in galore_params]
+
+        optimizer_dict = {}
+        scheduler_dict = {}
+        name2p_dict = {}
+        p2name_dict = {}
+
+        # define a hook function to update the parameter p during the backward pass
+        def optimizer_hook(p, log_lr=False):
+            if p.grad is None:
+                return
+            optimizer_dict[p].step()
+            optimizer_dict[p].zero_grad()
+            scheduler_dict[p].step()
+            if log_lr:
+                reporter.report("lr", optimizer_dict[p].param_groups[0]["lr"])
+
+        lr_logged = False
+        for name, p in self.named_parameters():
+            if p.requires_grad:
+                if id(p) in id_galore_params:
+                    optimizer_dict[p] = GaLoreAdamW8bit(
+                        [
+                            {
+                                "params": p,
+                                "rank": 128,
+                                "update_proj_gap": 250,
+                                "scale": 0.25,
+                                "proj_type": "std",
+                            }
+                        ],
+                        lr=config_opt.learning_rate,
+                    )
+                else:
+                    optimizer_dict[p] = bnb.optim.Adam8bit(
+                        [p], lr=config_opt.learning_rate
+                    )
+                scheduler_dict[p] = (
+                    torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+                        optimizer_dict[p], 10000, 2
+                    )
+                )
+
+                # Register the hook onto every parameter
+                p.register_post_accumulate_grad_hook(
+                    partial(optimizer_hook, log_lr=not lr_logged)
+                )
+                lr_logged = True
+                name2p_dict[name] = p
+                p2name_dict[p] = name
+
+        if self.optimizer_state_checkpoints is not None:
+            for name in self.optimizer_state_checkpoints["optimizer"].keys():
+                p = name2p_dict[name]
+                optimizer_dict[p].load_state_dict(
+                    self.optimizer_state_checkpoints["optimizer"][name]
+                )
+                # hack around for galore saving tensors inside a non-module object
+                for v in optimizer_dict[p].state.values():
+                    if "projector" in v and hasattr(v["projector"], "ortho_matrix"):
+                        v["projector"].ortho_matrix = v["projector"].ortho_matrix.to(
+                            p.device
+                        )
+                scheduler_dict[p].load_state_dict(
+                    self.optimizer_state_checkpoints["scheduler"][name]
+                )
+
+        self.optimizer_dict = optimizer_dict
+        self.scheduler_dict = scheduler_dict
+        self.name2p_dict = name2p_dict
+        self.p2name_dict = p2name_dict
 
     # pylint: disable-next=arguments-differ
     def configure_gradient_clipping(

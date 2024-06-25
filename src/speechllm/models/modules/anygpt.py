@@ -1,10 +1,17 @@
+# pylint: disable=possibly-used-before-assignment
+import logging
+
 import bitsandbytes as bnb
 import torch
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 from transformers import BitsAndBytesConfig, LlamaForCausalLM
-from unsloth import FastLanguageModel
 
-from speechllm.utils import check_ampere_gpu
+from speechllm.utils import check_hpu, supports_bf16
+
+if torch.cuda.is_available():
+    from unsloth import FastLanguageModel
+if check_hpu():
+    import habana_frameworks.torch.core as htcore  # noqa: F401 pylint: disable=unused-import
 
 
 def find_all_linear_names(model):
@@ -31,6 +38,9 @@ def constructor(
     offline=False,
     model_fpath=None,
 ):
+    if unsloth and not torch.cuda.is_available():
+        logging.warning("Unsloth will be disabled because no GPUs are detected.")
+        unsloth = False
     if lora:
         if unsloth:
             model, _ = FastLanguageModel.from_pretrained(
@@ -69,14 +79,14 @@ def constructor(
                 bnb_4bit_quant_type="nf4",
                 bnb_4bit_use_double_quant=True,
                 bnb_4bit_compute_dtype=(
-                    torch.bfloat16 if check_ampere_gpu() else torch.float16
+                    torch.bfloat16 if supports_bf16() else torch.float16
                 ),
             )
             model = LlamaForCausalLM.from_pretrained(
                 offline and model_fpath or "fnlp/AnyGPT-chat",
-                torch_dtype=(torch.bfloat16 if check_ampere_gpu() else torch.float16),
+                torch_dtype=(torch.bfloat16 if supports_bf16() else torch.float16),
                 quantization_config=bnb_config,
-                attn_implementation="flash_attention_2",
+                attn_implementation="flash_attention_2" if not check_hpu() else None,
                 device_map="auto",
                 local_files_only=offline,
             )
@@ -108,7 +118,7 @@ def constructor(
             model, _ = FastLanguageModel.from_pretrained(
                 model_name=offline and model_fpath or "fnlp/AnyGPT-chat",
                 max_seq_length=2048,
-                dtype=(torch.bfloat16 if check_ampere_gpu() else torch.float16),
+                dtype=(torch.bfloat16 if supports_bf16() else torch.float16),
                 load_in_4bit=False,
                 device_map="auto",
                 trust_remote_code=True,
@@ -121,8 +131,8 @@ def constructor(
         else:
             model = LlamaForCausalLM.from_pretrained(
                 offline and model_fpath or "fnlp/AnyGPT-chat",
-                torch_dtype=(torch.bfloat16 if check_ampere_gpu() else torch.float16),
-                attn_implementation="flash_attention_2",
+                torch_dtype=(torch.bfloat16 if supports_bf16() else torch.float16),
+                attn_implementation="flash_attention_2" if not check_hpu() else None,
                 device_map="auto",
                 use_cache=False,
                 local_files_only=offline,
@@ -154,6 +164,10 @@ def constructor(
         return {
             "tokens": tokens,
         }
+
+    # TODO: disabled until backend not found issue is resolved
+    # if check_hpu():
+    #     model = torch.compile(model, backend="hpu_backend")
 
     modules = {
         "anygpt": model,

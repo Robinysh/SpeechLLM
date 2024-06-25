@@ -2,7 +2,11 @@
 
 ## Setup
 
+### For cuda machines
 `make`
+
+### For hpu machines
+`make install-hpu`
 
 ## Run
 

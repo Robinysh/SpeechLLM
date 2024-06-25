@@ -18,3 +18,16 @@ def check_ampere_gpu():
 
     # Checking all GPUs
     return any(supported_gpu in gpu_name for supported_gpu in supported_gpus)
+
+
+def check_hpu():
+    try:
+        import habana_frameworks.torch.hpu as hthpu  # pylint: disable=import-outside-toplevel
+
+        return hthpu.is_available()
+    except ModuleNotFoundError:
+        return False
+
+
+def supports_bf16():
+    return check_hpu() or check_ampere_gpu()
