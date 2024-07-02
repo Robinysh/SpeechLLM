@@ -12,6 +12,9 @@ def tokenize_func(sentence, tokenizer):
         return_tensors="pt",
     )
     result["labels"] = result["input_ids"].clone()
+
+    # set pad token to -100 to ignore loss
+    result["labels"][result["attention_mask"] == 0] = -100
     return result
 
 
