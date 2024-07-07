@@ -1,4 +1,14 @@
+# pylint: disable=wrong-import-position, wrong-import-order
 from pathlib import Path
+
+# torch.multiprocessing.set_start_method('forkserver', force=True)
+from speechllm.utils import check_hpu
+
+if check_hpu():
+    import habana_frameworks.torch.core as htcore  # noqa: F401 pylint: disable=unused-import
+    from habana_frameworks.torch.hpex.experimental.transformer_engine import recipe
+
+    # import habana_frameworks.torch.gpu_migration
 
 import hydra
 import lightning as L

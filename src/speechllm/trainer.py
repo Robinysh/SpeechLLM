@@ -1,16 +1,15 @@
 import logging
+import traceback
 from functools import partial
 from pathlib import Path
 
-import bitsandbytes as bnb
 import torch
-from galore_torch import GaLoreAdamW8bit
 from lightningtools import reporter
 from lightningtools.trainer import BaseLightningModule
 from lightningtools.utils import NoamLR, detach_any
 
 import speechllm.logger  # noqa: F401 pylint: disable=unused-import
-from speechllm.utils import check_hpu
+from speechllm.utils import check_hpu, recursive_map
 
 logging.getLogger("habana_frameworks").setLevel(logging.WARNING)
 
@@ -52,9 +51,17 @@ class Model(BaseLightningModule):
         stage_name = self.optimizer_idx_map[int(optimizer_idx)]
         if stage_name not in self.pipelines:
             return None
-        model_output = self.pipelines[stage_name](
-            **batch, optimizer_idx=optimizer_idx, step=self.global_step
-        )
+        try:
+            model_output = self.pipelines[stage_name](
+                **batch, optimizer_idx=optimizer_idx, step=self.global_step
+            )
+        except RuntimeError as e:
+            if "Graph compile failed." in str(e):
+                torch.save(batch, f"err_{batch_idx}.pt")
+                print(e)
+                return None
+            raise e
+
         if model_output is None:
             return None
         loss_dict = self.losses[stage_name](
@@ -92,6 +99,50 @@ class Model(BaseLightningModule):
         }
 
         model_output = {k: detach_any(v) for k, v in model_output.items()}
+        return {
+            "loss_dict": loss_dict,
+            "model_output": model_output,
+            "loss": total_loss,
+        }
+
+    def validation_step(self, batch, batch_idx):
+        try:
+            model_output = self.pipelines[self.optimizer_idx_map[0]](
+                **batch, step=self.global_step
+            )
+        except RuntimeError as e:
+            if "Graph compile failed." in str(e):
+                torch.save(batch, f"err_{batch_idx}.pt")
+                print(e)
+                return None
+            raise e
+
+        if model_output is None:
+            return None
+        loss_dict = self.losses["val"](**(batch | model_output), step=self.global_step)
+        if len(loss_dict) == 0:
+            return None
+        total_loss = sum(map(torch.mean, loss_dict.values()))
+        loss_dict["loss"] = total_loss
+        reporter.report_dict(
+            {"valid/" + k: torch.mean(v) for k, v in loss_dict.items()}
+        )
+
+        if hasattr(self, "log_eval") and batch_idx == 0:
+            first_data = {
+                k: v[:1] if isinstance(v, torch.Tensor) else v for k, v in batch.items()
+            }
+            try:
+                reporter.logging_disabled = True
+                model_inference_output = self.forward(first_data)
+                reporter.logging_disabled = False
+                if model_inference_output is not None:
+                    self.log_eval(batch, model_output, model_inference_output)
+            # pylint: disable-next=broad-exception-caught
+            except Exception as e:
+                traceback.print_exc()
+                logging.error(e)
+
         return {
             "loss_dict": loss_dict,
             "model_output": model_output,
@@ -219,6 +270,9 @@ class Model(BaseLightningModule):
                     },
                 ]
 
+            # pylint: disable-next=import-outside-toplevel
+            import bitsandbytes as bnb
+
             # NOTE: optimizer frequency messes up feature loss
             optimizer = bnb.optim.Adam8bit(
                 self.param_group["default"],
@@ -244,6 +298,9 @@ class Model(BaseLightningModule):
     def configure_galore(  # noqa: C901 pylint: disable=too-many-locals
         self, config_opt
     ):
+        # pylint: disable-next=import-outside-toplevel
+        from galore_torch import GaLoreAdamW8bit
+
         galore_params = []
         target_modules_list = ["attn", "mlp"]
         for module_name, module in self.named_modules():
@@ -288,6 +345,9 @@ class Model(BaseLightningModule):
                         lr=config_opt.learning_rate,
                     )
                 else:
+                    # pylint: disable-next=import-outside-toplevel
+                    import bitsandbytes as bnb
+
                     optimizer_dict[p] = bnb.optim.Adam8bit(
                         [p], lr=config_opt.learning_rate
                     )
@@ -340,6 +400,11 @@ class Model(BaseLightningModule):
         new_state_dict = {}
         filters = []
         clone_list = []
+        for key, value in checkpoint["callbacks"].items():
+            if "ModelCheckpoint" in key:
+                checkpoint["callbacks"][key] = recursive_map(
+                    value, lambda x: x.to(device=self.device)
+                )
         for k, _ in checkpoint["state_dict"].items():
             if any(f in k for f in filters):
                 continue
@@ -351,10 +416,11 @@ class Model(BaseLightningModule):
                         k.replace(f"{replace_k}.", f"{replace_k}_clone.")
                     ] = checkpoint["state_dict"][k]
         checkpoint["state_dict"] = new_state_dict
-        self.optimizer_state_checkpoints = {
-            "optimizer": checkpoint["optimizer_state"],
-            "scheduler": checkpoint["scheduler_state"],
-        }
+        if "optimizer_state" in checkpoint:
+            self.optimizer_state_checkpoints = {
+                "optimizer": checkpoint["optimizer_state"],
+                "scheduler": checkpoint["scheduler_state"],
+            }
 
     def on_save_checkpoint(self, checkpoint):
         if self.optimizer_dict is not None:

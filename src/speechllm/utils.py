@@ -31,3 +31,13 @@ def check_hpu():
 
 def supports_bf16():
     return check_hpu() or check_ampere_gpu()
+
+
+def recursive_map(item, fn):
+    if isinstance(item, dict):
+        return {k: recursive_map(v, fn) for k, v in item.items()}
+    if isinstance(item, list):
+        return [recursive_map(v, fn) for v in item]
+    if torch.is_tensor(item):
+        return fn(item)
+    return item

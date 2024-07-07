@@ -1,14 +1,14 @@
 # pylint: disable=possibly-used-before-assignment
 import logging
 
-import bitsandbytes as bnb
 import torch
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 from transformers import BitsAndBytesConfig, LlamaForCausalLM
 
 from speechllm.utils import check_hpu, supports_bf16
 
-if torch.cuda.is_available():
+if not check_hpu() and torch.cuda.is_available():
+    import bitsandbytes as bnb
     from unsloth import FastLanguageModel
 if check_hpu():
     import habana_frameworks.torch.core as htcore  # noqa: F401 pylint: disable=unused-import
@@ -28,7 +28,7 @@ def find_all_linear_names(model):
     return list(lora_module_names)
 
 
-# pylint: disable-next=too-many-arguments
+# pylint: disable-next=too-many-arguments, too-many-locals
 def constructor(
     lora_alpha=64,
     lora_rank=32,
@@ -38,7 +38,7 @@ def constructor(
     offline=False,
     model_fpath=None,
 ):
-    if unsloth and not torch.cuda.is_available():
+    if unsloth and (not torch.cuda.is_available() or check_hpu()):
         logging.warning("Unsloth will be disabled because no GPUs are detected.")
         unsloth = False
     if lora:
@@ -140,13 +140,6 @@ def constructor(
 
     def forward(model_input):
         lm_output = model(**model_input)
-
-        # reporter.report(
-        #     "audio/next_token_generation",
-        #     torch.argmax(lm_output.logits, dim=-1),
-        #     tag="speechtokens",
-        # )
-
         return {
             "lm_output": lm_output,
         }
@@ -165,9 +158,14 @@ def constructor(
             "tokens": tokens,
         }
 
-    # TODO: disabled until backend not found issue is resolved
-    # if check_hpu():
+    # TODO: disabled until crash issue is resolved. hpu_backend only works in eager mode and is much slower
+    # # pylint: disable-next=protected-access
+    # if check_hpu() and 'hpu_backend' in torch._dynamo.list_backends():
     #     model = torch.compile(model, backend="hpu_backend")
+
+    # TODO: only works in lazy mode
+    # import habana_frameworks.torch as htorch
+    # htcore.hpu.ModuleCacher()(model=model, inplace=True)
 
     modules = {
         "anygpt": model,
