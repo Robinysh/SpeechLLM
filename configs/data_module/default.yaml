@@ -12,6 +12,9 @@ data_module:
         offline: ${offline}
     drop_last: true
     num_workers: ${data_module.num_workers}
+    persistent_workers: ${data_module.persistent_workers}
+    pin_memory: ${data_module.pin_memory}
+    prefetch_factor: ${data_module.prefetch_factor}
     shuffle: true
   train_dataset: ${data_module.train_dataset}
   val_dataloader_args:
@@ -25,9 +28,15 @@ data_module:
         offline: ${offline}
     drop_last: true
     num_workers: ${data_module.num_workers}
+    persistent_workers: ${data_module.persistent_workers}
+    pin_memory: ${data_module.pin_memory}
+    prefetch_factor: ${data_module.prefetch_factor}
     shuffle: true
   val_dataset: ${data_module.val_dataset}
 num_workers: 16
+persistent_workers: true
+pin_memory: false
+prefetch_factor: 4
 train_dataset:
   _target_: speechllm.data.pipeline.hf_pipeline
   cache_dir: ${paths.dataset_cache}
