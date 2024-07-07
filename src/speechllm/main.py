@@ -37,6 +37,13 @@ def main(cfg):
     if cfg.load_optimizer or cfg.last_ckpt is None:
         lightning_module = instantiate(cfg.lightning_module)
         lightning_module.set_config(cfg)
+        if trainer.precision_plugin.precision == "fp8" and check_hpu():
+            trainer.precision_plugin.convert_modules(
+                lightning_module,
+                replace_layers=True,
+                # pylint: disable-next=possibly-used-before-assignment
+                recipe=recipe.DelayedScaling(),
+            )
         trainer.fit(lightning_module, dm, ckpt_path=cfg.last_ckpt)
     else:
         lightning_module = hydra.utils.get_method(cfg.lightning_module["_target_"])

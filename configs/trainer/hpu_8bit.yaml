@@ -1,0 +1,22 @@
+_target_: lightning.Trainer
+accelerator:
+  _target_: lightning_habana.pytorch.accelerator.HPUAccelerator
+callbacks:
+  - ${callbacks.best_checkpoint_callback}
+  - ${callbacks.last_checkpoint_callback}
+  - ${callbacks.exception_checkpoint_callback}
+detect_anomaly: false
+devices: 1
+limit_train_batches: null
+limit_val_batches: 100
+log_every_n_steps: 100
+logger: ${logger}
+max_epochs: 99999
+num_sanity_val_steps: 1
+plugins:
+  _target_: lightning_habana.pytorch.plugins.precision.HPUPrecisionPlugin
+  precision: fp8
+reload_dataloaders_every_n_epochs: 1
+strategy:
+  _target_: lightning_habana.pytorch.strategies.SingleHPUStrategy
+val_check_interval: 500
