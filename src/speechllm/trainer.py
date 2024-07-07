@@ -157,6 +157,13 @@ class Model(BaseLightningModule):
             )
         else:
             decoder_fpath = None
+
+        reporter.report(
+            "text/tokens_prediction",
+            model_inference_output,
+            tag="text",
+        )
+
         reporter.report(
             "audio/sample_prediction",
             model_inference_output,

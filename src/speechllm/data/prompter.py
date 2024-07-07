@@ -31,3 +31,22 @@ class Prompter:
 
         prompt = f"{user_name}: Let's chat.{input_tokens}{user_end} {chatbot_name}: {output_tokens}{chatbot_end}"
         return prompt
+
+
+class COTPrompter:
+    def __init__(self, verbose: bool = False):
+        self._verbose = verbose
+
+    def generate_template(
+        self,
+        input_tokens,
+        input_transcript=None,
+        output_tokens=None,
+        output_transcript=None,
+    ) -> str:
+        if output_tokens is None:
+            prompt = f"{user_name}: Let's chat.{input_tokens}"
+            return prompt
+
+        prompt = f"{user_name}: Let's chat.{input_tokens} Text transcript: {input_transcript}{user_end} {chatbot_name}: Response transcript: {output_transcript} Speech response: {output_tokens}{chatbot_end}"
+        return prompt
