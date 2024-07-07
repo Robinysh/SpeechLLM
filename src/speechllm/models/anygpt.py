@@ -37,6 +37,7 @@ def constructor(
     lora=False,
     offline=False,
     model_fpath=None,
+    use_gaudi_impl=False,
 ):
     if unsloth and (not torch.cuda.is_available() or check_hpu()):
         logging.warning("Unsloth will be disabled because no GPUs are detected.")
@@ -129,14 +130,34 @@ def constructor(
                 use_gradient_checkpointing=False,  # Incompatible with per layer weight update
             )
         else:
-            model = LlamaForCausalLM.from_pretrained(
-                offline and model_fpath or "fnlp/AnyGPT-chat",
-                torch_dtype=(torch.bfloat16 if supports_bf16() else torch.float16),
-                attn_implementation="flash_attention_2" if not check_hpu() else None,
-                device_map="auto",
-                use_cache=False,
-                local_files_only=offline,
-            )
+            if not use_gaudi_impl:
+                model = LlamaForCausalLM.from_pretrained(
+                    offline and model_fpath or "fnlp/AnyGPT-chat",
+                    torch_dtype=(torch.bfloat16 if supports_bf16() else torch.float16),
+                    attn_implementation=(
+                        "flash_attention_2" if not check_hpu() else None
+                    ),
+                    device_map="cpu",
+                    use_cache=False,
+                    local_files_only=offline,
+                )
+            else:
+                # pylint: disable-next=import-outside-toplevel
+                from speechllm.models.impl.gaudillama import GaudiLlamaForCausalLM
+
+                model = GaudiLlamaForCausalLM.from_pretrained(
+                    offline and model_fpath or "fnlp/AnyGPT-chat",
+                    torch_dtype=(torch.bfloat16 if supports_bf16() else torch.float16),
+                    attn_implementation=(
+                        "flash_attention_2" if not check_hpu() else None
+                    ),
+                    device_map="cpu",
+                    use_cache=False,
+                    local_files_only=offline,
+                )
+                model.generation_config.use_fused_rope = True
+                model.model.config.use_fused_rope = True
+                model.model.config.use_fused_rms_norm = True
 
     def forward(model_input):
         lm_output = model(**model_input)

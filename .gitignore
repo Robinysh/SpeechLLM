@@ -8,11 +8,14 @@
 *.mo
 *.out
 *.pot
+*.prof
+*.pt
 *.py,cover
 *.py[cod]
 *.sage.py
 *.so
 *.spec
+*.swp
 .Python
 .cache
 .coverage
