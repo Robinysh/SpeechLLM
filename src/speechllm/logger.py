@@ -3,6 +3,7 @@ from functools import cache
 from pathlib import Path
 
 import numpy as np
+import torch
 from lightningtools import reporter
 from speechtokenizer import SpeechTokenizer
 
@@ -59,10 +60,12 @@ def get_speech_tokens_models(fpath=None, device=None):
     return soundstorm, speech_tokenizer
 
 
+# soundstorm gives noisy output with bfloat16 on hpu
+@torch.autocast(device_type="hpu", dtype=torch.float32)
 def log_speech_tokens(tokens, decoder_fpath=None, device=None):
     soundstorm, speech_tokenizer = get_speech_tokens_models(decoder_fpath, device)
     sample_tokens = tokens[0]
-    speech_code = re.search("(?<=<sosp>).*(?=<eosp>|$)", sample_tokens)
+    speech_code = re.search("(?<=<sosp>).*?(?=<eosp>|$)", sample_tokens)
     audio = []
     if speech_code is not None:
         audio = decode_speech(
