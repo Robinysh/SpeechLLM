@@ -175,6 +175,7 @@ class Model(BaseLightningModule):
     def on_train_batch_start(self, *args, **kwargs):
         # on_batch_start does not work
         self.log_batch(*args, **kwargs)
+        reporter.report("trainer/global_step", self.global_step)
 
     # pylint: disable-next=unused-argument
     def on_train_batch_end(self, *args, **kwargs):
