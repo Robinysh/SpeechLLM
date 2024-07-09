@@ -4,6 +4,7 @@ accelerator:
 callbacks:
   - ${callbacks.last_checkpoint_callback}
   - ${callbacks.exception_checkpoint_callback}
+  - ${callbacks.lr_callback}
 detect_anomaly: false
 devices: 1
 limit_train_batches: null

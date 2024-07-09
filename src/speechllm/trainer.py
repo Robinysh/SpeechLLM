@@ -267,7 +267,6 @@ class Model(BaseLightningModule):
                 lr_dict = {
                     "scheduler": scheduler,
                     "interval": "step",
-                    "monitor": "valid/loss",
                     "strict": False,
                     "name": "lr_dict_t",
                 }
