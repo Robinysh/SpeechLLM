@@ -168,6 +168,7 @@ class Model(BaseLightningModule):
             "audio/sample_prediction",
             model_inference_output,
             decoder_fpath=decoder_fpath,
+            device=self.trainer.device,
             tag="speechtokens",
         )
 

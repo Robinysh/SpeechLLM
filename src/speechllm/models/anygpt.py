@@ -166,18 +166,21 @@ def constructor(
         }
 
     def inference(model_infer_input):
-        tokens = model.generate(
-            **model_infer_input,
-            # eos_token_id=tokenizer.encode("<eosp>"),
-            max_length=2048,
-            do_sample=True,
-        )
-        # -1 for keeping <sosp>
-        tokens = tokens[:, model_infer_input["input_ids"].shape[1] - 1 :]
+        with torch.inference_mode():
+            tokens = model.generate(
+                **model_infer_input,
+                # eos_token_id=tokenizer.encode("<eosp>"),
+                max_new_tokens=2048,
+                # max_new_tokens=1024,
+                do_sample=True,
+                max_time=60,
+            )
+            # -1 for keeping <sosp>
+            tokens = tokens[:, model_infer_input["input_ids"].shape[1] - 1 :]
 
-        return {
-            "tokens": tokens,
-        }
+            return {
+                "tokens": tokens,
+            }
 
     # TODO: disabled until crash issue is resolved. hpu_backend only works in eager mode and is much slower
     # # pylint: disable-next=protected-access

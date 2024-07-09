@@ -26,3 +26,4 @@ mv
 softmax
 log_softmax
 scaled_dot_product_attention
+topk

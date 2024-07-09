@@ -19,6 +19,9 @@ plugins:
 reload_dataloaders_every_n_epochs: 1
 strategy:
   _target_: lightning_habana.pytorch.strategies.HPUDeepSpeedStrategy
+  ddp_comm_hook: torch.distributed.algorithms.ddp_comm_hooks.default_hooks.fp16_compress_hook
+  gradient_as_bucket_view: true
   stage: 2
+  static_graph: true
   zero_optimization: true
 val_check_interval: 500

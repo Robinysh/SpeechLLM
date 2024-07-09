@@ -3,12 +3,12 @@ from functools import cache
 from pathlib import Path
 
 import numpy as np
-import torch
-import wandb
 from lightningtools import reporter
 from speechtokenizer import SpeechTokenizer
 
+import wandb
 from speechllm.soundstorm_speechtokenizer.decode import decode_speech, load_soundstorm
+from speechllm.utils import check_hpu
 
 
 def save_figure_to_numpy(fig, spectrogram=False):
@@ -35,25 +35,34 @@ def log_audio(audio):
 
 
 @cache
-def get_speech_tokens_models(fpath=None):
+def get_speech_tokens_models(fpath=None, device=None):
+    if device is None:
+        if check_hpu():
+            device = "hpu"
+        else:
+            device = "cpu"
     if fpath is None:
         fpath = "/data3/robinysh/models/"
     fpath = Path(fpath)
-    soundstorm = load_soundstorm(
-        fpath / "soundstorm/speechtokenizer_soundstorm_mls.pt"
-    ).float()
-    speech_tokenizer = SpeechTokenizer.load_from_checkpoint(
-        fpath / "speechtokenizer/config.json", fpath / "speechtokenizer/ckpt.dev"
-    ).float()
-    soundstorm = torch.compile(soundstorm, backend="onnxrt")
-    speech_tokenizer = torch.compile(speech_tokenizer, backend="onnxrt")
+    soundstorm = (
+        load_soundstorm(fpath / "soundstorm/speechtokenizer_soundstorm_mls.pt")
+        .float()
+        .to(device=device)
+    )
+    speech_tokenizer = (
+        SpeechTokenizer.load_from_checkpoint(
+            fpath / "speechtokenizer/config.json", fpath / "speechtokenizer/ckpt.dev"
+        )
+        .float()
+        .to(device=device)
+    )
     return soundstorm, speech_tokenizer
 
 
-def log_speech_tokens(tokens, decoder_fpath=None):
-    soundstorm, speech_tokenizer = get_speech_tokens_models(decoder_fpath)
+def log_speech_tokens(tokens, decoder_fpath=None, device=None):
+    soundstorm, speech_tokenizer = get_speech_tokens_models(decoder_fpath, device)
     sample_tokens = tokens[0]
-    speech_code = re.search("(?<=<sosp>).*(?=<eosp>)", sample_tokens)
+    speech_code = re.search("(?<=<sosp>).*(?=<eosp>|$)", sample_tokens)
     audio = []
     if speech_code is not None:
         audio = decode_speech(

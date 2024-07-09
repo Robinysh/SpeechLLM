@@ -46,12 +46,13 @@ def semantic2acoustic(semantic_tokens, prompt_tokens, soundstorm, tokenizer, ste
 @torch.no_grad()
 def decode_speech(content, soundstorm, speech_tokenizer, prompt_tokens=None):
     semantic_codes = [[int(num) for num in re.findall(r"\d+", content)]]
+    device = next(soundstorm.parameters()).device
     wav = semantic2acoustic(
-        torch.Tensor(semantic_codes).int(),
+        torch.Tensor(semantic_codes).int().to(device=device),
         prompt_tokens,
         soundstorm,
         speech_tokenizer,
         steps=4,
     )
-    wav = wav.squeeze(0).detach().cpu()
+    wav = wav.squeeze(0).detach().cpu().float()
     return wav

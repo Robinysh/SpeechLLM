@@ -14,6 +14,7 @@ defaults:
   - lightning_module: default
   - logger: default
   - paths: default
+  - _self_
 last_ckpt: null
 load_optimizer: true
 offline: false
