@@ -4,6 +4,7 @@ from pathlib import Path
 from speechllm.utils import check_hpu
 
 if check_hpu():
+    # workaround for broken frozen ddp training
     import habana_frameworks.torch.gpu_migration  # noqa: F401 pylint: disable=unused-import
 
     # import habana_frameworks.torch.distributed.hccl # noqa: F401 pylint: disable=unused-import

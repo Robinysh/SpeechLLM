@@ -128,9 +128,16 @@ class Model(BaseLightningModule):
             {"valid/" + k: torch.mean(v) for k, v in loss_dict.items()}
         )
 
-        if hasattr(self, "log_eval") and batch_idx == 0:
+        if hasattr(self, "log_eval") and batch_idx == 0 and self.trainer.is_global_zero:
             first_data = {
-                k: v[:1] if isinstance(v, torch.Tensor) else v for k, v in batch.items()
+                k: v[:1] if isinstance(v, (torch.Tensor, list)) else v
+                for k, v in batch.items()
+            }
+            first_data["model_input"] = {
+                k: v[:1] for k, v in batch["model_input"].items()
+            }
+            first_data["model_infer_input"] = {
+                k: v[:1] for k, v in batch["model_infer_input"].items()
             }
             try:
                 reporter.logging_disabled = True
@@ -157,7 +164,6 @@ class Model(BaseLightningModule):
             )
         else:
             decoder_fpath = None
-
         reporter.report(
             "text/tokens_prediction",
             model_inference_output,
