@@ -172,7 +172,7 @@ def constructor(
                 # eos_token_id=tokenizer.encode("<eosp>"),
                 max_new_tokens=2048,
                 # max_new_tokens=1024,
-                do_sample=True,
+                do_sample=False,
                 max_time=60,
             )
             # -1 for keeping <sosp>
