@@ -1,7 +1,8 @@
 config_optimizers:
   decay_step: 105000
   learning_rate: 2.0e-05
-  optimizer: galore
+  lr_restart_period: 1000
+  optimizer: adam
   warmup_step: 1000
   weight_decay: 0
 defaults:

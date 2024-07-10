@@ -269,7 +269,7 @@ class Model(BaseLightningModule):
                 )
 
                 scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
-                    optimizer, 10000, 2
+                    optimizer, config_opt.lr_restart_period, 2
                 )
                 lr_dict = {
                     "scheduler": scheduler,
