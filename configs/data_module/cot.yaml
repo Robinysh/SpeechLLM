@@ -27,12 +27,13 @@ data_module:
         model_fpath: ${paths.pretrained_models}/AnyGPT-chat
         offline: ${offline}
     drop_last: true
-    num_workers: ${data_module.num_workers}
+    num_workers: 1
     persistent_workers: ${data_module.persistent_workers}
     pin_memory: ${data_module.pin_memory}
-    prefetch_factor: ${data_module.prefetch_factor}
+    prefetch_factor: 2
     shuffle: true
   val_dataset: ${data_module.val_dataset}
+num_preprocess_workers: 16
 num_workers: 4
 persistent_workers: false
 pin_memory: false
@@ -41,11 +42,11 @@ train_dataset:
   _target_: speechllm.data.pipeline.hf_asr_tts_cot_pipeline
   cache_dir: ${paths.dataset_cache}
   database: ${database.train}
-  num_workers: ${data_module.num_workers}
+  num_workers: ${data_module.num_preprocess_workers}
   stage: train
 val_dataset:
   _target_: speechllm.data.pipeline.hf_asr_tts_cot_pipeline
   cache_dir: ${paths.dataset_cache}
   database: ${database.val}
-  num_workers: ${data_module.num_workers}
+  num_workers: ${data_module.num_preprocess_workers}
   stage: val
