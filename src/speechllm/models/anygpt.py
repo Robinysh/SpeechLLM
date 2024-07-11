@@ -3,7 +3,7 @@ import logging
 
 import torch
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
-from transformers import BitsAndBytesConfig, LlamaForCausalLM
+from transformers import BitsAndBytesConfig, GenerationConfig, LlamaForCausalLM
 
 from speechllm.utils import check_hpu, supports_bf16
 
@@ -166,14 +166,15 @@ def constructor(
         }
 
     def inference(model_infer_input):
+        generation_config = GenerationConfig(temperature=0.7, top_p=0.8, do_sample=True)
         with torch.inference_mode():
             tokens = model.generate(
                 **model_infer_input,
                 # eos_token_id=tokenizer.encode("<eosp>"),
                 max_new_tokens=2048,
                 # max_new_tokens=1024,
-                do_sample=False,
-                max_time=60,
+                max_time=30,
+                generation_config=generation_config,
             )
             # -1 for keeping <sosp>
             tokens = tokens[:, model_infer_input["input_ids"].shape[1] - 1 :]
