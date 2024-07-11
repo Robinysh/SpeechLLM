@@ -1,4 +1,5 @@
 # pylint: skip-file
+from speechllm.data.utils import clean_gigaspeech_tokens
 
 # It's just because the name MMGPT was used for model training in the early stages of research.
 chatbot_name = "[AnyGPT]"
@@ -45,8 +46,10 @@ class COTPrompter:
         output_transcript=None,
     ) -> str:
         if output_tokens is None:
-            prompt = f"{user_name}: Let's chat.{input_tokens}"
+            prompt = f"{user_name}: {text_ins_sep} Step by step, give me the transcript of the provided audio, a chat response to the transcript, and read the response. {input_tokens} {user_end} {chatbot_name}: {response_sep}"
             return prompt
+        input_transcript = clean_gigaspeech_tokens(input_transcript).lower()
+        output_transcript = clean_gigaspeech_tokens(output_transcript).lower()
 
-        prompt = f"{user_name}: Let's chat.{input_tokens} Text transcript: {input_transcript}{user_end} {chatbot_name}: Response transcript: {output_transcript} Speech response: {output_tokens}{chatbot_end}"
+        prompt = f"{user_name}: {text_ins_sep} Step by step, give me the transcript of the provided audio, a chat response to the transcript, and read the response. {input_tokens} {user_end} {chatbot_name}: {response_sep} {input_transcript}\n {chatbot_name}: {output_transcript} {output_tokens} {chatbot_end}"
         return prompt

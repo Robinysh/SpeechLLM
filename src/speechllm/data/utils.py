@@ -52,3 +52,16 @@ def get_tokenizer(offline=False, model_fpath=None):
             tokenizer.add_tokens(tokens)
     """
     return tokenizer
+
+
+def clean_gigaspeech_tokens(x):
+    gigaspeech_punctuations = {
+        ("<COMMA>", ","),
+        ("<PERIOD>", "."),
+        ("<QUESTIONMARK>", "?"),
+        ("<EXCLAMATIONPOINT>", "!"),
+    }
+
+    for token, punct in gigaspeech_punctuations:
+        x = x.replace(token, punct)
+    return x
