@@ -48,6 +48,7 @@ dependencies = [
     "click>=8.1.7",
     "linetimer>=0.1.5",
     "galore-torch @ git+https://github.com/Robinysh/GaLore",
+    "torch-warmup-lr @ git+https://github.com/Robinysh/torch-warmup-lr.git",
 ]
 requires-python = ">=3.10.0,<3.12"
 readme = "README.md"

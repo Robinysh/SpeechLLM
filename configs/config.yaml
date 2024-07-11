@@ -1,5 +1,6 @@
 config_optimizers:
   decay_step: 105000
+  init_lr: 2.0e-07
   learning_rate: 2.0e-05
   lr_restart_period: 1000
   optimizer: adam

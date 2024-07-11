@@ -7,6 +7,7 @@ import torch
 from lightningtools import reporter
 from lightningtools.trainer import BaseLightningModule
 from lightningtools.utils import NoamLR, detach_any
+from torch_warmup_lr import WarmupLR
 
 import speechllm.logger  # noqa: F401 pylint: disable=unused-import
 from speechllm.utils import check_hpu, recursive_map
@@ -271,6 +272,13 @@ class Model(BaseLightningModule):
                 scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
                     optimizer, config_opt.lr_restart_period, 2
                 )
+                if config_opt.warmup_step > 0:
+                    scheduler = WarmupLR(
+                        scheduler,
+                        config_opt.init_lr,
+                        config_opt.warmup_step,
+                        warmup_strategy="linear",
+                    )
                 lr_dict = {
                     "scheduler": scheduler,
                     "interval": "step",
@@ -292,8 +300,14 @@ class Model(BaseLightningModule):
                 self.param_group["default"],
                 config_opt.learning_rate,
             )
-
             scheduler = NoamLR(optimizer, config_opt.warmup_step)
+            scheduler = WarmupLR(
+                scheduler,
+                config_opt.init_lr,
+                config_opt.warmup_step,
+                warmup_strategy="linear",
+            )
+
             lr_dict = {
                 "scheduler": scheduler,
                 "interval": "step",

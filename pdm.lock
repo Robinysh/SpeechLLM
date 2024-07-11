@@ -5,7 +5,7 @@
 groups = ["default", "cuda", "hpu"]
 strategy = ["cross_platform"]
 lock_version = "4.4.1"
-content_hash = "sha256:742fe07c8a8152d58210ae45ea6960e4942910ce10d19e43c981e4286dd9dd33"
+content_hash = "sha256:a48646951ac6b72adc340e2f71c3e8433bcdb06708e9335fa3deeea54fa8de53"
 
 [[package]]
 name = "accelerate"
@@ -4681,6 +4681,16 @@ files = [
 ]
 
 [[package]]
+name = "torch-warmup-lr"
+version = "1.0.0"
+git = "https://github.com/Robinysh/torch-warmup-lr.git"
+revision = "e74c353e2394403234c4d83d5ec65f2b4a67a317"
+summary = "a warpper for pytorch lr_scheduler that support warmup learning rate"
+dependencies = [
+    "torch",
+]
+
+[[package]]
 name = "torchaudio"
 version = "2.2.2"
 summary = "An audio package for PyTorch"
@@ -4962,7 +4972,7 @@ dependencies = [
     "tqdm",
     "transformers>=4.42.3",
     "tyro",
-    "unsloth @ git+https://github.com/unslothai/unsloth.git",
+    "unsloth @ git+https://github.com/unslothai/unsloth.git@28e9de27d7f16b25ab72eef2bcf29c16f05a905a",
     "wheel>=0.42.0",
 ]
 
