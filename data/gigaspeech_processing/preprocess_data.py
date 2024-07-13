@@ -9,7 +9,9 @@ import torchaudio
 from resemble_enhance.enhancer.inference import enhance, load_enhancer
 from tqdm import tqdm
 
-from speechllm.data_generation.speechcolab.datasets.gigaspeech import GigaSpeech
+from speechllm.data_generation.gigaspeech.speechcolab.datasets.gigaspeech import (
+    GigaSpeech,
+)
 
 gigaspeech_punctuations = {
     ("<COMMA>", ","),

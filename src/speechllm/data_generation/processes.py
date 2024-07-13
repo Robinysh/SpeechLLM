@@ -20,7 +20,7 @@ from resemble_enhance.enhancer.inference import enhance, load_enhancer
 from speechtokenizer import SpeechTokenizer
 
 from speechllm.data_generation.audio2tokens import speech_tokens_to_string
-from speechllm.data_generation.speechcolab.datasets.gigaspeech import GigaSpeech
+from speechllm.data_generation.gigaspeech.speechcolab.datasets.gigaspeech import GigaSpeech
 
 DIALOGUE_PAIR_DIR = "dialogue_pairs"
 AUDIO_PAIR_DIR = "audio_pairs"
