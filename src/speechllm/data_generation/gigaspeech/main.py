@@ -1,9 +1,17 @@
-import os
+# pylint: disable=wrong-import-position, wrong-import-order
+from speechllm.utils import check_hpu
+
+if check_hpu():
+    import habana_frameworks.torch.core as htcore  # noqa: F401 pylint: disable=unused-import
+    from optimum.habana.transformers.modeling_utils import adapt_transformers_to_gaudi
+
+    adapt_transformers_to_gaudi()
+
 import click
 import ray
 import torch
 
-from speechllm.data_generation.gigaspeech.speechcolab.datasets.gigaspeech import (
+from speechllm.data_generation.gigaspeech.speechcolab.datasets.gigaspeech import (  # pylint: disable=ungrouped-imports
     GigaSpeech,
 )
 from speechllm.data_generation.processes import (  # noqa pylint: disable=unused-import
@@ -11,6 +19,7 @@ from speechllm.data_generation.processes import (  # noqa pylint: disable=unused
     Diarizer,
     Downloader,
     SpeechTokenizerGenerator,
+    WhisperASR,
     add_cols,
     split_dialogues,
 )
@@ -67,6 +76,12 @@ def main(data_path, output_path, subset, nnodes, node_id):
         fn_kwargs={"cols": {"data_path": data_path, "output_path": output_path}},
     )
     # ds = ds.map(print_row)
+    ds = ds.map(
+        WhisperASR,
+        concurrency=4,
+        resources={"HPU": 1},
+        fn_constructor_args={"device": "hpu"},
+    )
     ds = ds.map(Downloader, concurrency=4, fn_constructor_args={"data_path": data_path})
     # ds = ds.map(AudioEnhancer, num_gpus=1, concurrency=1)
     # ds = ds.map(Diarizer, concurrency=3, num_gpus=1/3)

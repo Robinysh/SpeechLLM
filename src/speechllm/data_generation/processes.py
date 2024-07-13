@@ -19,9 +19,12 @@ from pyannote.core import Segment
 from pydub import AudioSegment
 from resemble_enhance.enhancer.inference import enhance, load_enhancer
 from speechtokenizer import SpeechTokenizer
+from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 
 from speechllm.data_generation.audio2tokens import speech_tokens_to_string
-from speechllm.data_generation.gigaspeech.speechcolab.datasets.gigaspeech import GigaSpeech
+from speechllm.data_generation.gigaspeech.speechcolab.datasets.gigaspeech import (
+    GigaSpeech,
+)
 
 DIALOGUE_PAIR_DIR = "dialogue_pairs"
 AUDIO_PAIR_DIR = "audio_pairs"
@@ -442,3 +445,82 @@ class SpeechTokenizerGenerator:
         with torch.no_grad():
             codes = self.speech_tokenizer.encode(wav)  # codes: (n_q, B, T)
         return codes[0, 0, :]
+
+
+class WhisperASR:
+    def __init__(self, device="cuda"):
+        torch_dtype = torch.bfloat16
+        model_id = "distil-whisper/distil-large-v3"
+        model = AutoModelForSpeechSeq2Seq.from_pretrained(
+            model_id,
+            torch_dtype=torch_dtype,
+            low_cpu_mem_usage=False,
+            use_safetensors=True,
+        )
+        model.to(device)
+
+        processor = AutoProcessor.from_pretrained(model_id)
+
+        self.pipe = pipeline(
+            "automatic-speech-recognition",
+            model=model,
+            tokenizer=processor.tokenizer,
+            feature_extractor=processor.feature_extractor,
+            max_new_tokens=None,
+            torch_dtype=torch_dtype,
+            device=device,
+        )
+        self.tokenizer = processor.tokenizer
+
+    def __call__(self, row):
+        try:
+            fpath = Path(row["data_path"]) / row["path"]
+            if not fpath.exists():
+                return row
+
+            save_path = (
+                Path(row["output_path"])
+                / "whisper_transcripts"
+                / fpath.with_suffix(".json").name
+            )
+            if save_path.exists():
+                return row
+            save_path.parent.mkdir(parents=True, exist_ok=True)
+
+            dwav, sampling_rate = torchaudio.load(fpath)
+            if sampling_rate != 16000:
+                dwav = torchaudio.functional.resample(
+                    # dwav, sampling_rate, self.tokenizer.sample_rate
+                    dwav,
+                    sampling_rate,
+                    16000,
+                )
+
+            dwav = dwav.mean(dim=0).numpy()
+
+            results = self.pipe(
+                str(fpath),
+                generate_kwargs={"language": "english"},
+                return_timestamps=True,
+                chunk_length_s=30,
+                batch_size=256,
+            )
+            filtered = list(filter(self.transcript_filter, results["chunks"]))
+            text = "".join([x["text"] for x in filtered])
+            results = {"text": text, "chunks": filtered}
+            save_path.write_text(json.dumps(results, ensure_ascii=False, indent=4))
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            print("Error encountered")
+            print(row["path"])
+            print(e)
+
+        return row
+
+    def transcript_filter(self, item):
+        if None in item["timestamp"]:
+            return False
+        if item["timestamp"][1] - item["timestamp"][0] < 0.1:
+            return False
+        if not re.search(r"\w", item["text"]):
+            return False
+        return True
