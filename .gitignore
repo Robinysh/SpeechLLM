@@ -67,6 +67,7 @@ downloads/
 eggs/
 env.bak/
 env/
+hl-smi_log*txt
 htmlcov/
 instance/
 ipython_config.py
