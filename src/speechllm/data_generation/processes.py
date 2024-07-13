@@ -11,6 +11,7 @@ from random import randint
 import soundfile as sf
 import torch
 import torchaudio
+from huggingface_hub import snapshot_download
 from icecream import ic
 from openai import OpenAI
 from pyannote.audio import Pipeline
@@ -383,9 +384,10 @@ class DialogueFilter:
 
 class SpeechTokenizerGenerator:
     def __init__(self, device="cuda"):
-        model_fpath = Path(
-            "/home/robinysh/scratch/models/AnyGPT-speech-modules/speechtokenizer"
+        speech_modules_path = snapshot_download(
+            repo_id="fnlp/AnyGPT-speech-modules", repo_type="model"
         )
+        model_fpath = Path(speech_modules_path) / "speechtokenizer"
         self.speech_tokenizer = (
             SpeechTokenizer.load_from_checkpoint(
                 model_fpath / "config.json", model_fpath / "ckpt.dev"

@@ -4,6 +4,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from huggingface_hub import snapshot_download
 from lightningtools import reporter
 from speechtokenizer import SpeechTokenizer
 
@@ -43,7 +44,9 @@ def get_speech_tokens_models(fpath=None, device=None):
         else:
             device = "cpu"
     if fpath is None:
-        fpath = "/data3/robinysh/models/"
+        fpath = snapshot_download(
+            repo_id="fnlp/AnyGPT-speech-modules", repo_type="model"
+        )
     fpath = Path(fpath)
     soundstorm = (
         load_soundstorm(fpath / "soundstorm/speechtokenizer_soundstorm_mls.pt")
