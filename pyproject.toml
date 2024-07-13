@@ -14,7 +14,7 @@ dependencies = [
     "isort>=5.13.2",
     "autoflake>=2.2.1",
     "pylint>=3.0.3",
-    "transformers>=4.36.2",
+    # "transformers>=4.36.2",
     "torch==2.2.2",
     "tiktoken>=0.5.2",
     "matplotlib>=3.8.1",
@@ -58,7 +58,9 @@ license = {text = "MIT"}
 cuda = ["flash-attn>=2.5.6", "bitsandbytes>=0.42.0"]
 hpu = [
     "lightning-habana>=1.6.0",
-    "deepspeed @ git+https://github.com/HabanaAI/DeepSpeed.git@1.16.0",
+    "deepspeed @ git+https://github.com/HabanaAI/DeepSpeed.git@1.16.2",
+    "optimum[habana]>=1.12.1",
+    "optimum-habana>=1.12",
 ]
 
 [build-system]
@@ -96,5 +98,6 @@ sync = ["--no-isolation"]
 installsync = ["--no-isolation"]
 
 [tool.pdm.resolution.overrides]
-# transformers = ">=4.40.0"  # dependency bug with optimum-habana
-torch = "==2.2.2"  # dependency bug with habana deepspeed and vllm
+transformers = "==4.40.0"  # dependency bug with optimum-habana and unsloth
+torch = "==2.2.2"  # dependency bug with habana deepspeed==2.2.2 and vllm picky version
+accelerate = ">=0.28.0"  # dependency bug with speechtokenizer >= 0.28 and optimum-habana < 0.28
