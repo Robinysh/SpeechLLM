@@ -19,7 +19,7 @@ from pyannote.core import Segment
 from pydub import AudioSegment
 from resemble_enhance.enhancer.inference import enhance, load_enhancer
 from speechtokenizer import SpeechTokenizer
-from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
+from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
 
 from speechllm.data_generation.audio2tokens import speech_tokens_to_string
 from speechllm.data_generation.gigaspeech.speechcolab.datasets.gigaspeech import (
@@ -449,28 +449,18 @@ class SpeechTokenizerGenerator:
 
 class WhisperASR:
     def __init__(self, device="cuda"):
-        torch_dtype = torch.bfloat16
+        self.dtype = torch.bfloat16
         model_id = "distil-whisper/distil-large-v3"
-        model = AutoModelForSpeechSeq2Seq.from_pretrained(
+        self.model = AutoModelForSpeechSeq2Seq.from_pretrained(
             model_id,
-            torch_dtype=torch_dtype,
+            torch_dtype=self.dtype,
             low_cpu_mem_usage=False,
             use_safetensors=True,
         )
-        model.to(device)
+        self.model.to(device)
 
-        processor = AutoProcessor.from_pretrained(model_id)
-
-        self.pipe = pipeline(
-            "automatic-speech-recognition",
-            model=model,
-            tokenizer=processor.tokenizer,
-            feature_extractor=processor.feature_extractor,
-            max_new_tokens=None,
-            torch_dtype=torch_dtype,
-            device=device,
-        )
-        self.tokenizer = processor.tokenizer
+        self.processor = AutoProcessor.from_pretrained(model_id)
+        self.device = device
 
     def __call__(self, row):
         try:
@@ -498,14 +488,32 @@ class WhisperASR:
 
             dwav = dwav.mean(dim=0).numpy()
 
-            results = self.pipe(
-                str(fpath),
-                generate_kwargs={"language": "english"},
-                return_timestamps=True,
-                chunk_length_s=30,
-                batch_size=256,
+            inputs = self.processor(
+                dwav, return_tensors="pt", truncation=False, sampling_rate=16_000
             )
-            filtered = list(filter(self.transcript_filter, results["chunks"]))
+            inputs = inputs.to(self.device, self.dtype)
+
+            output = self.model.generate(
+                **inputs,
+                return_timestamps=True,
+                return_segments=True,
+                language="english",
+                do_sample=True,
+                temperature=0.2,
+                compression_ratio_threshold=1.35,
+                logprob_threshold=-1.0,
+            )
+
+            result = self.processor.batch_decode(
+                output["sequences"], skip_special_tokens=True, output_offsets=True
+            )
+
+            for i in range(len(result[0]["offsets"])):
+                result[0]["offsets"][i]["timestamp"] = (
+                    output["segments"][0][i]["start"].item(),
+                    output["segments"][0][i]["end"].item(),
+                )
+            filtered = list(filter(self.transcript_filter, result[0]["offsets"]))
             text = "".join([x["text"] for x in filtered])
             results = {"text": text, "chunks": filtered}
             save_path.write_text(json.dumps(results, ensure_ascii=False, indent=4))
