@@ -386,49 +386,31 @@ class DialogueFilter:
 
 
 class SpeechTokenizerGenerator:
-    def __init__(self, device="cuda"):
+    def __init__(self, device="cuda", dtype=torch.half):
         speech_modules_path = snapshot_download(
             repo_id="fnlp/AnyGPT-speech-modules", repo_type="model"
         )
         model_fpath = Path(speech_modules_path) / "speechtokenizer"
-        self.speech_tokenizer = (
-            SpeechTokenizer.load_from_checkpoint(
-                model_fpath / "config.json", model_fpath / "ckpt.dev"
-            )
-            .half()
-            .to(device)
-        )
+        self.speech_tokenizer = SpeechTokenizer.load_from_checkpoint(
+            model_fpath / "config.json", model_fpath / "ckpt.dev"
+        ).to(device, dtype=dtype)
         self.device = device
+        self.dtype = dtype
 
-    def __call__(self, row):
-        dialogue_path = (
-            Path(row["data_path"]) / DIALOGUE_PAIR_DIR / Path(row["path"]).stem
-        ).with_suffix(".json")
-        if not dialogue_path.exists():
+    def __call__(self, row, output_path):
+        audio_fpath = Path(row["audio_fpath"])
+        relative_audio_fpath = audio_fpath.relative_to(output_path)
+        save_fpath = (
+            Path(output_path) / "tokens" / Path(*relative_audio_fpath.parts[1:])
+        ).with_suffix(".txt")
+        save_fpath.parent.mkdir(parents=True, exist_ok=True)
+
+        row["token_fpath"] = save_fpath
+        if not audio_fpath.exists():
             return row
-        dialogue_data = json.loads(dialogue_path.read_text())
-        if len(dialogue_data) == 0:
-            return row
-
-        audio_path = Path(row["data_path"]) / AUDIO_PAIR_DIR / Path(row["path"]).stem
-        save_path = Path(row["data_path"]) / TOKENS_DIR / Path(row["path"]).stem
-        save_path.mkdir(parents=True, exist_ok=True)
-
-        for i, segments in enumerate(dialogue_data):
-            for j in range(len(segments)):
-                tokens_fpath = (
-                    save_path / f"{Path(row['path']).stem}_{i}_{j + 1}"
-                ).with_suffix(".txt")
-                if tokens_fpath.exists():
-                    continue
-                audio_fpath = (
-                    audio_path / f"{Path(row['path']).stem}_{i}_{j + 1}"
-                ).with_suffix(".opus")
-                if not audio_fpath.exists():
-                    continue
-                code = self.encode_speech(audio_fpath)
-                code_string = speech_tokens_to_string(code)
-                tokens_fpath.write_text(code_string, encoding="utf-8")
+        code = self.encode_speech(audio_fpath)
+        code_string = speech_tokens_to_string(code)
+        save_fpath.write_text(code_string, encoding="utf-8")
         return row
 
     def encode_speech(self, audio_path):
@@ -440,7 +422,7 @@ class SpeechTokenizerGenerator:
             wav = torchaudio.functional.resample(
                 wav, sr, self.speech_tokenizer.sample_rate
             )
-        wav = wav.unsqueeze(0).to(self.device).half()
+        wav = wav.unsqueeze(0).to(self.device, dtype=self.dtype)
         # Extract discrete codes from SpeechTokenizer
         with torch.no_grad():
             codes = self.speech_tokenizer.encode(wav)  # codes: (n_q, B, T)
