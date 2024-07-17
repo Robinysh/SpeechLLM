@@ -39,14 +39,14 @@ persistent_workers: false
 pin_memory: false
 prefetch_factor: 2
 train_dataset:
-  _target_: speechllm.data.gigaspeech.pipeline.gigaspeech_asr_tts_cot_pipeline
+  _target_: speechllm.data.soda.pipeline.soda_tts_cot_pipeline
   cache_dir: ${paths.dataset_cache}
-  database: ${database.train.gigaspeech}
+  database: ${database.train.soda}
   num_workers: ${data_module.num_preprocess_workers}
   stage: train
 val_dataset:
-  _target_: speechllm.data.gigaspeech.pipeline.gigaspeech_asr_tts_cot_pipeline
+  _target_: speechllm.data.soda.pipeline.soda_tts_cot_pipeline
   cache_dir: ${paths.dataset_cache}
-  database: ${database.val.gigaspeech}
+  database: ${database.val.soda}
   num_workers: ${data_module.num_preprocess_workers}
   stage: val

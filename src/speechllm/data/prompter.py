@@ -1,4 +1,6 @@
 # pylint: skip-file
+import random
+
 from speechllm.data.utils import clean_gigaspeech_tokens
 
 # It's just because the name MMGPT was used for model training in the early stages of research.
@@ -52,4 +54,29 @@ class COTPrompter:
         output_transcript = clean_gigaspeech_tokens(output_transcript).lower()
 
         prompt = f"{user_name}: {text_ins_sep} Step by step, give me the transcript of the provided audio, a chat response to the transcript, and read the response. {input_tokens} {user_end} {chatbot_name}: {response_sep} {input_transcript}\n {chatbot_name}: {output_transcript} {output_tokens} {chatbot_end}"
+        return prompt
+
+
+class SodaCOTPrompter:
+    def __init__(self, context_range=(1, 99)):
+        self.context_range = context_range
+
+    def generate_template(self, context, response_tokens=None, output_transcript=None):
+        num_contexts = random.randint(
+            self.context_range[0], min(self.context_range[1], len(context))
+        )
+        dialogue = []
+        for i, turn in enumerate(context):
+            if (len(context) - i) % 2 == 0:
+                header = f"{chatbot_name}:"
+                footer = chatbot_end
+            else:
+                header = f"{user_name}:"
+                footer = user_end
+            dialogue.append(header + turn + footer)
+        context = "\n".join(dialogue[max(len(context) - num_contexts, 0) :])
+        if response_tokens is None or output_transcript is None:
+            prompt = f"{user_name}: {text_ins_sep} Step by step, give me a chat response to the dialogue, and read the response.\n {context}\n[AnyGPT]: {response_sep}"
+        else:
+            prompt = f"{user_name}: {text_ins_sep} Step by step, give me a chat response to the dialogue, and read the response.\n {context}\n[AnyGPT]: {response_sep} {output_transcript} {response_tokens} {chatbot_end}"
         return prompt

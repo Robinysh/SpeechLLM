@@ -41,3 +41,11 @@ def recursive_map(item, fn):
     if torch.is_tensor(item):
         return fn(item)
     return item
+
+
+def dict_list_to_list_dict(dl):
+    return [dict(zip(dl, t)) for t in zip(*dl.values())]
+
+
+def list_dict_to_dict_list(ld):
+    return {k: [dic[k] for dic in ld] for k in ld[0]}

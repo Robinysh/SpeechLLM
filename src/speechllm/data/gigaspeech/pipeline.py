@@ -1,31 +1,12 @@
 from pathlib import Path
 
-import lightning as L
 from datasets import load_dataset
-from torch.utils.data import DataLoader
 
-from speechllm.data import processes
+from speechllm.data.gigaspeech import processes
 from speechllm.data.prompter import COTPrompter, Prompter
 
 
-class DataModule(L.LightningDataModule):
-    def __init__(
-        self, train_dataloader_args, val_dataloader_args, train_dataset, val_dataset
-    ):
-        super().__init__()
-        self.train_dataset = train_dataset
-        self.val_dataset = val_dataset
-        self.train_dataloader_args = train_dataloader_args
-        self.val_dataloader_args = val_dataloader_args
-
-    def train_dataloader(self):
-        return DataLoader(self.train_dataset, **self.train_dataloader_args)
-
-    def val_dataloader(self):
-        return DataLoader(self.val_dataset, **self.val_dataloader_args)
-
-
-def hf_pipeline(
+def gigaspeech_pipeline(
     database,
     num_workers=16,
     cache_dir=None,
@@ -59,7 +40,7 @@ def hf_pipeline(
 
     Path(cache_dir / "audio").mkdir(parents=True, exist_ok=True)
     ds = ds.map(
-        lambda x: processes.load_audio(Path(database["audio"]) / x["fname"]),
+        lambda x: processes.load_paired_audio(Path(database["audio"]) / x["fname"]),
         batched=False,
         num_proc=num_workers,
         load_from_cache_file=use_cache,
@@ -104,7 +85,7 @@ def hf_pipeline(
     return ds
 
 
-def hf_asr_tts_cot_pipeline(
+def gigaspeech_asr_tts_cot_pipeline(
     database,
     num_workers=16,
     cache_dir=None,
@@ -175,7 +156,7 @@ def hf_asr_tts_cot_pipeline(
 
     Path(cache_dir / "audio").mkdir(parents=True, exist_ok=True)
     ds = ds.map(
-        lambda x: processes.load_audio(Path(database["audio"]) / x["fname"]),
+        lambda x: processes.load_paired_audio(Path(database["audio"]) / x["fname"]),
         batched=False,
         num_proc=num_workers,
         load_from_cache_file=use_cache,
@@ -183,21 +164,33 @@ def hf_asr_tts_cot_pipeline(
         desc="reading audio",
     )
 
-    # ds.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"])
+    ds.set_format(
+        columns=[
+            "prompt",
+            "infer_prompt",
+            "input_audio",
+            "input_tokens",
+            "input_transcript",
+            "output_audio",
+            "output_tokens",
+            "output_transcript",
+        ],
+    )
 
     return ds
 
 
 if __name__ == "__main__":
     print(
-        hf_pipeline(
+        gigaspeech_asr_tts_cot_pipeline(
             {
-                "metadata": "/data3/public/GigaSpeech/processed/train_files.txt",
-                "audio": "/data3/public/GigaSpeech/processed/audio_pairs",
-                "transcript": "/data3/public/GigaSpeech/processed/dialogue_pairs",
-                "tokens": "/data3/public/GigaSpeech/processed/tokens",
+                "metadata": "/scratch-1/robinysh/GigaSpeech/test_files.txt",
+                "audio": "/scratch-1/robinysh/GigaSpeech/audio_pairs",
+                "transcript": "/scratch-1/robinysh/GigaSpeech/dialogue_pairs",
+                "tokens": "/scratch-1/robinysh/GigaSpeech/tokens",
             },
             num_workers=16,
-            cache_dir="/data3/robinysh/cache",
+            use_cache=False,
+            cache_dir="/scratch-1/robinysh/cache/huggingface/debug",
         )[0]
     )

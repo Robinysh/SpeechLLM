@@ -1,6 +1,7 @@
 import torch
 
 from speechllm.data.utils import tokenize_func
+from speechllm.utils import list_dict_to_dict_list
 
 
 def reflective_pad_sequence(sequences, padding_value=0):
@@ -25,10 +26,6 @@ def reflective_pad_sequence(sequences, padding_value=0):
 
 def to_list_of_tensor(x):
     return [torch.Tensor(i) for i in x]
-
-
-def list_dict_to_dict_list(x):
-    return {k: [dic[k] for dic in x] for k in x[0]}
 
 
 def collate(row, tokenizer):

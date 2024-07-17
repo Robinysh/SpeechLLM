@@ -17,7 +17,7 @@ def rename_cols(row):
     return row
 
 
-def load_audio(fpath):
+def load_paired_audio(fpath):
     input_fpath = f"{fpath}_1.opus"
     output_fpath = f"{fpath}_2.opus"
 

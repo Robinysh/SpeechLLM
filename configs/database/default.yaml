@@ -1,10 +1,20 @@
 train:
-  audio: ${paths.dataset_root}/audio_pairs/
-  metadata: ${paths.dataset_root}/train_files.txt
-  tokens: ${paths.dataset_root}/tokens/
-  transcript: ${paths.dataset_root}/dialogue_pairs/
+  gigaspeech:
+    audio: ${paths.gigaspeech_root}/audio_pairs/
+    metadata: ${paths.gigaspeech_root}/train_files.txt
+    tokens: ${paths.gigaspeech_root}/tokens/
+    transcript: ${paths.gigaspeech_root}/dialogue_pairs/
+  soda:
+    audio: ${paths.soda_root}/train/audio/
+    json: ${paths.soda_root}/train/json
+    tokens: ${paths.soda_root}/train/tokens/
 val:
-  audio: ${paths.dataset_root}/audio_pairs/
-  metadata: ${paths.dataset_root}/test_files.txt
-  tokens: ${paths.dataset_root}/tokens/
-  transcript: ${paths.dataset_root}/dialogue_pairs/
+  gigaspeech:
+    audio: ${paths.gigaspeech_root}/audio_pairs/
+    metadata: ${paths.gigaspeech_root}/test_files.txt
+    tokens: ${paths.gigaspeech_root}/tokens/
+    transcript: ${paths.gigaspeech_root}/dialogue_pairs/
+  soda:
+    audio: ${paths.soda_root}/test/audio/
+    json: ${paths.soda_root}/test/json
+    tokens: ${paths.soda_root}/test/tokens/
