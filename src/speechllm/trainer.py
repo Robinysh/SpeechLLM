@@ -203,12 +203,11 @@ class Model(BaseLightningModule):
 
     # pylint: disable-next=unused-argument
     def log_batch(self, batch, *args, **kwargs):
-        if "input_audio" in batch:
-            reporter.report(
-                "audio/input",
-                batch["input_audio"],
-                tag="audio",
-            )
+        reporter.report(
+            "audio/input",
+            batch["input_audio"],
+            tag="audio",
+        )
 
         reporter.report(
             "audio/output_label",
@@ -216,12 +215,11 @@ class Model(BaseLightningModule):
             tag="audio",
         )
 
-        if "input_transcript" in batch:
-            reporter.report(
-                "text/input_transcript",
-                batch["input_transcript"],
-                tag="text",
-            )
+        reporter.report(
+            "text/input_transcript",
+            batch["input_transcript"],
+            tag="text",
+        )
 
         reporter.report(
             "text/output_transcript",

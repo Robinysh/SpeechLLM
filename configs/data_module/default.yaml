@@ -15,7 +15,6 @@ data_module:
     persistent_workers: ${data_module.persistent_workers}
     pin_memory: ${data_module.pin_memory}
     prefetch_factor: ${data_module.prefetch_factor}
-    shuffle: true
   train_dataset: ${data_module.train_dataset}
   val_dataloader_args:
     batch_size: ${data_module.batch_size}
@@ -31,7 +30,6 @@ data_module:
     persistent_workers: ${data_module.persistent_workers}
     pin_memory: ${data_module.pin_memory}
     prefetch_factor: ${data_module.prefetch_factor}
-    shuffle: true
   val_dataset: ${data_module.val_dataset}
 num_workers: 16
 persistent_workers: true

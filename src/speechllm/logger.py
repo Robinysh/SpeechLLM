@@ -29,11 +29,17 @@ def log_image(image):
 
 
 def log_text(text):
-    return text[0]
+    for item in text:
+        if item is not None:
+            return item
+    return None
 
 
 def log_audio(audio):
-    return wandb.Audio(audio[0], sample_rate=16000)
+    for item in audio:
+        if item is not None:
+            return wandb.Audio(item, sample_rate=16000)
+    return None
 
 
 @cache

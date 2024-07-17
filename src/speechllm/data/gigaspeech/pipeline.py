@@ -163,9 +163,11 @@ def gigaspeech_asr_tts_cot_pipeline(
         cache_file_name=str(cache_dir / "audio" / f"{stage}.arrow"),
         desc="reading audio",
     )
+    ds = ds.to_iterable_dataset(num_shards=32)
+    ds = ds.shuffle(seed=42, buffer_size=100)
 
-    ds.set_format(
-        columns=[
+    ds.select_columns(
+        [
             "prompt",
             "infer_prompt",
             "input_audio",
@@ -176,7 +178,6 @@ def gigaspeech_asr_tts_cot_pipeline(
             "output_transcript",
         ],
     )
-
     return ds
 
 

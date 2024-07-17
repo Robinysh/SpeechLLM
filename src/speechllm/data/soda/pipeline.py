@@ -37,6 +37,18 @@ class TransformDS:
         return self.fn(self.ds.__next__())
 
 
+# pylint: disable=too-few-public-methods
+class WrapInputOutput:
+    def __init__(self, fn, kwarg_maps, output_name):
+        self.fn = fn
+        self.kwarg_maps = kwarg_maps
+        self.output_name = output_name
+
+    def __call__(self, input_dict):
+        kwargs = {k: input_dict[v] for k, v in self.kwarg_maps.items()}
+        return {self.output_name: self.fn(**kwargs)}
+
+
 def soda_tts_cot_pipeline(
     database,
     num_workers=16,
@@ -44,6 +56,7 @@ def soda_tts_cot_pipeline(
     use_cache=True,
     stage="train",
 ):
+    prompter = SodaCOTPrompter()
     cache_dir = Path(cache_dir) / "soda"
 
     ds = load_dataset("json", data_dir=database["json"])["train"]
@@ -96,15 +109,42 @@ def soda_tts_cot_pipeline(
         cache_file_name=str(cache_dir / "audio" / f"{stage}.arrow"),
         desc="reading audio",
     )
-    # ds = TransformDS(ds, transform)
-    ds.set_transform(
-        transform,
-        columns=[
-            "context",
+
+    # Operations below dont cache and run on-the-fly
+    ds = ds.to_iterable_dataset(num_shards=32)
+    ds = ds.shuffle(seed=42, buffer_size=100)
+    prompt_wrapped = WrapInputOutput(
+        prompter.generate_template,
+        kwarg_maps={
+            "context": "context",
+            "response_tokens": "output_tokens",
+            "output_transcript": "output_transcript",
+        },
+        output_name="prompt",
+    )
+    ds = ds.map(prompt_wrapped)
+
+    infer_prompt_wrapped = WrapInputOutput(
+        prompter.generate_template,
+        kwarg_maps={
+            "context": "context",
+        },
+        output_name="infer_prompt",
+    )
+    ds = ds.map(infer_prompt_wrapped)
+
+    ds = ds.select_columns(
+        [
+            "prompt",
+            "infer_prompt",
             "output_audio",
             "output_tokens",
             "output_transcript",
-        ],
+        ]
+    )
+    ds = ds._resolve_features()  # pylint: disable=protected-access
+    ds = ds.cast_column(
+        "output_audio", datasets.Sequence(datasets.Value(dtype="float32"))
     )
 
     return ds
