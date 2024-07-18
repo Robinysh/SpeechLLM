@@ -430,9 +430,9 @@ class SpeechTokenizerGenerator:
 
 
 class WhisperASR:
-    def __init__(self, device="cuda"):
-        self.dtype = torch.bfloat16
+    def __init__(self, device="cuda", dtype=torch.bfloat16):
         model_id = "distil-whisper/distil-large-v3"
+        self.dtype = dtype
         self.model = AutoModelForSpeechSeq2Seq.from_pretrained(
             model_id,
             torch_dtype=self.dtype,
@@ -497,7 +497,9 @@ class WhisperASR:
                 )
             filtered = list(filter(self.transcript_filter, result[0]["offsets"]))
             text = "".join([x["text"] for x in filtered])
-            results = {"text": text, "chunks": filtered}
+            for item in filtered:
+                item["text"] = item["text"].strip()
+            results = {"text": text.strip(), "chunks": filtered}
             save_path.write_text(json.dumps(results, ensure_ascii=False, indent=4))
         except Exception as e:  # pylint: disable=broad-exception-caught
             print("Error encountered")
