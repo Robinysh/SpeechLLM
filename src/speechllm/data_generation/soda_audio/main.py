@@ -1,8 +1,6 @@
 # pylint: disable=wrong-import-position, wrong-import-order
 from pathlib import Path
 
-import torch
-
 from speechllm.utils import check_hpu
 
 if check_hpu():
@@ -17,6 +15,7 @@ import ray
 from datasets import load_dataset
 
 from speechllm.data_generation.processes import (  # noqa pylint: disable=unused-import,ungrouped-imports
+    TTS,
     SpeechTokenizerGenerator,
 )
 from speechllm.data_generation.soda_audio.processes import (  # noqa pylint: disable=unused-import
@@ -43,24 +42,31 @@ def main(output_path, nnodes, node_id):
     dataset = load_dataset("fixie-ai/soda-audio")
     for split_name, split in dataset.items():
         split_output_path = output_path / split_name
-        ds = ray.data.from_huggingface(split)
+        split = split.filter(lambda _, idx: idx % nnodes == node_id, with_indices=True)
+        ds = ray.data.from_huggingface(split, concurrency=16)
+        # ds = ds.map(
+        #     export_json,
+        #     concurrency=64,
+        #     num_cpus=4,
+        #     fn_kwargs={"output_path": split_output_path},
+        # )
+        # ds = ds.map(
+        #     export_audio,
+        #     concurrency=64,
+        #     num_cpus=4,
+        #     fn_kwargs={"output_path": split_output_path},
+        # )
+        # ds = ds.map(
+        #     SpeechTokenizerGenerator,
+        #     concurrency=(4, 32),
+        #     #num_cpus=16,
+        #     fn_constructor_kwargs={"device": "cpu", "dtype": torch.float32},
+        #     fn_kwargs={"output_path": split_output_path},
+        # )
         ds = ds.map(
-            export_json,
-            concurrency=64,
-            num_cpus=4,
-            fn_kwargs={"output_path": split_output_path},
-        )
-        ds = ds.map(
-            export_audio,
-            concurrency=64,
-            num_cpus=4,
-            fn_kwargs={"output_path": split_output_path},
-        )
-        ds = ds.map(
-            SpeechTokenizerGenerator,
-            concurrency=(4, 32),
-            num_cpus=16,
-            fn_constructor_kwargs={"device": "cpu", "dtype": torch.float32},
+            TTS,
+            concurrency=8,
+            num_gpus=1 / 8,
             fn_kwargs={"output_path": split_output_path},
         )
 

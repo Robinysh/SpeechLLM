@@ -49,6 +49,8 @@ dependencies = [
     "linetimer>=0.1.5",
     "galore-torch @ git+https://github.com/Robinysh/GaLore",
     "torch-warmup-lr @ git+https://github.com/Robinysh/torch-warmup-lr.git",
+    "librosa>=0.10.2.post1",
+    "chattts @ git+https://github.com/2noise/ChatTTS@dev",
 ]
 requires-python = ">=3.10.0,<3.12"
 readme = "README.md"
@@ -85,7 +87,7 @@ lint.composite = ["pdm-flake8", "pdm-pylint"]
 start.shell = "pdm run python -m speechllm.main"
 #start.shell = "pdm run python -m cProfile -o output.prof src/speechllm/main.py"
 #data-generate.shell = "if [ -e .env ]; then pdm run python src/speechllm/data_generation/main.py; else echo 'Make a copy of .env from .env.sample before you start.'; fi"
-data-generate.env = {PT_HPU_LAZY_MODE="0"}
+data-generate.env = {OMP_NUM_THREADS="8", PT_HPU_LAZY_MODE="0"}
 data-generate.env_file=".env"
 data-generate.shell = "pdm run python src/speechllm/data_generation/gigaspeech/main.py"
 pre_install.shell = "export CMAKE_ARGS='-DLLAMA_CUBLAS=on' FORCE_CMAKE=1 CFLAGS='-fPIC' CXX_FLAGS='-fPIC'"

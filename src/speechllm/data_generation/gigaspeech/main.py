@@ -78,18 +78,19 @@ def main(data_path, output_path, subset, nnodes, node_id):
     # ds = ds.map(print_row)
     ds = ds.map(
         WhisperASR,
-        concurrency=4,
-        resources={"HPU": 1},
-        fn_constructor_args={"device": "hpu"},
+        concurrency=2,
+        num_gpus=0.5,
+        # num_cpus=8,
+        fn_constructor_kwargs={"device": "cuda", "dtype": torch.float16},
     )
-    ds = ds.map(Downloader, concurrency=4, fn_constructor_args={"data_path": data_path})
-    # ds = ds.map(AudioEnhancer, num_gpus=1, concurrency=1)
-    # ds = ds.map(Diarizer, concurrency=3, num_gpus=1/3)
-    ds = ds.map(Diarizer, concurrency=2, num_gpus=0.5)
-    # ds = ds.map(Diarizer, concurrency=2)
-    ds = ds.map(DialogueFilter, concurrency=4)
-    ds = ds.map(split_dialogues)
-    ds = ds.map(SpeechTokenizerGenerator, concurrency=2, num_gpus=1 / 2)
+    # ds = ds.map(Downloader, concurrency=4, fn_constructor_args={"data_path": data_path})
+    # # ds = ds.map(AudioEnhancer, num_gpus=1, concurrency=1)
+    # # ds = ds.map(Diarizer, concurrency=3, num_gpus=1/3)
+    # ds = ds.map(Diarizer, concurrency=2, num_gpus=0.5)
+    # # ds = ds.map(Diarizer, concurrency=2)
+    # ds = ds.map(DialogueFilter, concurrency=4)
+    # ds = ds.map(split_dialogues)
+    # ds = ds.map(SpeechTokenizerGenerator, concurrency=2, num_gpus=1 / 2)
     ds.materialize()
 
 

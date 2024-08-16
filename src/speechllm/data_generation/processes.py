@@ -1,6 +1,7 @@
 # flake8-in-file-ignores: noqa: C901
 
 import json
+import logging
 import os
 import pickle
 import re
@@ -8,6 +9,8 @@ from itertools import pairwise
 from pathlib import Path
 from random import randint
 
+import ChatTTS
+import librosa
 import soundfile as sf
 import torch
 import torchaudio
@@ -25,6 +28,8 @@ from speechllm.data_generation.audio2tokens import speech_tokens_to_string
 from speechllm.data_generation.gigaspeech.speechcolab.datasets.gigaspeech import (
     GigaSpeech,
 )
+
+logging.getLogger("ChatTTS").disabled = True
 
 DIALOGUE_PAIR_DIR = "dialogue_pairs"
 AUDIO_PAIR_DIR = "audio_pairs"
@@ -516,3 +521,52 @@ class WhisperASR:
         if not re.search(r"\w", item["text"]):
             return False
         return True
+
+
+# pylint: disable-next=too-few-public-methods
+class TTS:
+    def __init__(self):
+        self.model = ChatTTS.Chat()
+        # No significant speedup with compile
+        self.model.load(compile=False)
+        # Seems to enhance stability
+        self.model.speaker.std *= 0.5
+
+    def __call__(self, row, output_path):
+        save_path = Path(output_path) / "dialogue_audio" / str(row["original_index"])
+        row["dialogue_audio"] = str(save_path)
+        if save_path.exists() and len(list(save_path.glob("*.opus"))) == len(
+            row["dialogue"]
+        ):
+            return row
+        save_path.mkdir(parents=True, exist_ok=True)
+
+        speakers = [self.model.sample_random_speaker() for _ in range(2)]
+        for i, speaker in enumerate(speakers):
+            texts = row["dialogue"][i::2]
+            params_infer_code = ChatTTS.Chat.InferCodeParams(
+                spk_emb=speaker,  # add sampled speaker
+                temperature=0.5,  # using custom temperature
+                top_P=0.5,  # top P decode
+                top_K=5,  # top K decode
+                show_tqdm=False,
+            )
+            params_refine = ChatTTS.Chat.RefineTextParams(show_tqdm=False)
+            wavs = self.model.infer(
+                texts,
+                params_infer_code=params_infer_code,
+                params_refine_text=params_refine,
+            )
+            for j, wav in enumerate(wavs):
+                wav = torchaudio.functional.resample(
+                    torch.Tensor(wav), 24000, 16000
+                ).cpu()
+                wav = wav.unsqueeze(0)
+                wav = librosa.effects.trim(wav)[0]
+
+                torchaudio.save(
+                    save_path / f"{i+j*2}.opus",
+                    wav,
+                    16000,
+                )
+        return row
