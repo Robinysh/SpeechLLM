@@ -1,5 +1,4 @@
 # flake8-in-file-ignores: noqa: C901
-
 import json
 import logging
 import os
@@ -16,6 +15,7 @@ import torch
 import torchaudio
 from huggingface_hub import snapshot_download
 from icecream import ic
+from nemo_text_processing.text_normalization.normalize import Normalizer
 from openai import OpenAI
 from pyannote.audio import Pipeline
 from pyannote.core import Segment
@@ -532,6 +532,12 @@ class TTS:
         # Seems to enhance stability
         self.model.speaker.std *= 0.5
 
+        self.text_normalizer = Normalizer(
+            input_case="cased",
+            cache_dir=None,
+            lang="en",
+        )
+
     def __call__(self, row, output_path):
         save_path = Path(output_path) / "dialogue_audio" / str(row["original_index"])
         row["dialogue_audio"] = str(save_path)
@@ -544,6 +550,7 @@ class TTS:
         speakers = [self.model.sample_random_speaker() for _ in range(2)]
         for i, speaker in enumerate(speakers):
             texts = row["dialogue"][i::2]
+            texts = [self.text_normalizer.normalize(x) for x in texts]
             params_infer_code = ChatTTS.Chat.InferCodeParams(
                 spk_emb=speaker,  # add sampled speaker
                 temperature=0.5,  # using custom temperature
