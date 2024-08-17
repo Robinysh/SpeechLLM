@@ -65,3 +65,15 @@ def clean_gigaspeech_tokens(x):
     for token, punct in gigaspeech_punctuations:
         x = x.replace(token, punct)
     return x
+
+
+# pylint: disable=too-few-public-methods
+class WrapInputOutput:
+    def __init__(self, fn, kwarg_maps, output_name):
+        self.fn = fn
+        self.kwarg_maps = kwarg_maps
+        self.output_name = output_name
+
+    def __call__(self, input_dict):
+        kwargs = {k: input_dict[v] for k, v in self.kwarg_maps.items()}
+        return {self.output_name: self.fn(**kwargs)}

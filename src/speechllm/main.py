@@ -1,14 +1,15 @@
 # pylint: disable=wrong-import-position, wrong-import-order
 from pathlib import Path
 
+import omegaconf
+
 from speechllm.utils import check_hpu
 
 if check_hpu():
     # workaround for broken frozen ddp training
-    import habana_frameworks.torch.gpu_migration  # noqa: F401 pylint: disable=unused-import
-
     # import habana_frameworks.torch.distributed.hccl # noqa: F401 pylint: disable=unused-import
     import habana_frameworks.torch.core as htcore  # noqa: F401 pylint: disable=unused-import
+    import habana_frameworks.torch.gpu_migration  # noqa: F401 pylint: disable=unused-import
     from habana_frameworks.torch.hpex.experimental.transformer_engine import recipe
 
 import hydra
@@ -17,7 +18,8 @@ import torch
 from hydra.utils import instantiate
 from lightningtools import reporter
 
-torch.multiprocessing.set_start_method("forkserver", force=True)
+# torch.multiprocessing.set_start_method("forkserver", force=True)
+# torch.multiprocessing.get_context('forkserver').set_forkserver_preload(['speechllm.utils'])
 
 
 @hydra.main(
@@ -27,7 +29,7 @@ def main(cfg):
     """
     os.symlink(
         os.path.abspath(".hydra/config.yaml"),
-        os.path.join(wandb.run.dir, "hydra-config.yaml"),
+        os.path.join(wandb.run.dir, "hydra-config.yaml")
     )
     wandb.save("hydra-config.yaml")
     """
@@ -52,12 +54,13 @@ def main(cfg):
         trainer.fit(lightning_module, dm, ckpt_path=cfg.last_ckpt)
     else:
         lightning_module = hydra.utils.get_method(cfg.lightning_module["_target_"])
-        params = {
-            k: instantiate(v) if isinstance(v, str) else v
-            for k, v in cfg.lightning_module.items()
-            if k != "_target_"
-        }
-
+        params = {}
+        for k, v in cfg.lightning_module.items():
+            if k != "_target_":
+                if isinstance(v, omegaconf.dictconfig.DictConfig):
+                    params[k] = instantiate(v)
+                else:
+                    params[k] = v
         lightning_module = lightning_module.load_from_checkpoint(
             cfg.last_ckpt,
             **params,

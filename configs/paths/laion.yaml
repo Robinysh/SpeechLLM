@@ -1,5 +1,5 @@
-checkpoint: /scratch-1/${oc.env:USER}/ml/${project_name}/${run_name}
-dataset_cache: /scratch-1/${oc.env:USER}/cache/huggingface
-gigaspeech_root: /scratch-1/${oc.env:USER}/GigaSpeech
+checkpoint: /storage/${oc.env:USER}/ml/${project_name}/${run_name}
+dataset_cache: /storage/${oc.env:USER}/cache/huggingface
+gigaspeech_root: /storage/${oc.env:USER}/GigaSpeech
 pretrained_models: null
-soda_root: /scratch-1/${oc.env:USER}/soda
+soda_root: /storage/${oc.env:USER}/soda

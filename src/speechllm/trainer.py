@@ -10,7 +10,7 @@ from lightningtools.utils import NoamLR, detach_any
 from torch_warmup_lr import WarmupLR
 
 import speechllm.logger  # noqa: F401 pylint: disable=unused-import
-from speechllm.utils import check_hpu, recursive_map
+from speechllm.utils import check_hpu, global_state, recursive_map
 
 logging.getLogger("habana_frameworks").setLevel(logging.WARNING)
 
@@ -183,6 +183,7 @@ class Model(BaseLightningModule):
         # on_batch_start does not work
         self.log_batch(*args, **kwargs)
         reporter.report("trainer/global_step", self.global_step)
+        global_state.global_step = self.global_step
 
     # pylint: disable-next=unused-argument
     def on_train_batch_end(self, *args, **kwargs):

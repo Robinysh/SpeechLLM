@@ -32,13 +32,13 @@ data_module:
     prefetch_factor: 2
   val_dataset: ${data_module.mixed_val_dataset}
 gigaspeech_train_dataset:
-  _target_: speechllm.data.gigaspeech.pipeline.gigaspeech_pipeline
+  _target_: speechllm.data.gigaspeech.pipeline.gigaspeech_asr_tts_implicit_cot_pipeline
   cache_dir: ${paths.dataset_cache}
   database: ${database.train.gigaspeech}
   num_workers: ${data_module.num_preprocess_workers}
   stage: train
 gigaspeech_val_dataset:
-  _target_: speechllm.data.gigaspeech.pipeline.gigaspeech_pipeline
+  _target_: speechllm.data.gigaspeech.pipeline.gigaspeech_asr_tts_implicit_cot_pipeline
   cache_dir: ${paths.dataset_cache}
   database: ${database.val.gigaspeech}
   num_workers: ${data_module.num_preprocess_workers}
@@ -62,18 +62,18 @@ mixed_val_dataset:
     - 0.2
   stopping_strategy: 'all_exhausted'
 num_preprocess_workers: 16
-num_workers: 4
+num_workers: 8
 persistent_workers: false
 pin_memory: false
 prefetch_factor: 2
 soda_train_dataset:
-  _target_: speechllm.data.soda.pipeline.soda_pipeline
+  _target_: speechllm.data.soda.pipeline.soda_tts_implicit_cot_pipeline
   cache_dir: ${paths.dataset_cache}
   database: ${database.train.soda}
   num_workers: ${data_module.num_preprocess_workers}
   stage: train
 soda_val_dataset:
-  _target_: speechllm.data.soda.pipeline.soda_pipeline
+  _target_: speechllm.data.soda.pipeline.soda_tts_implicit_cot_pipeline
   cache_dir: ${paths.dataset_cache}
   database: ${database.val.soda}
   num_workers: ${data_module.num_preprocess_workers}

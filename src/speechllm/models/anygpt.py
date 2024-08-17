@@ -160,12 +160,14 @@ def constructor(
                 model.model.config.use_fused_rms_norm = True
 
     def forward(model_input):
+        model.train()
         lm_output = model(**model_input)
         return {
             "lm_output": lm_output,
         }
 
     def inference(model_infer_input):
+        model.eval()
         generation_config = GenerationConfig(temperature=0.7, top_p=0.8, do_sample=True)
         with torch.inference_mode():
             tokens = model.generate(

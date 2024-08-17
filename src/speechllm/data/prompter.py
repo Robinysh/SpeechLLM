@@ -1,7 +1,10 @@
 # pylint: skip-file
 import random
 
+import numpy as np
+
 from speechllm.data.utils import clean_gigaspeech_tokens
+from speechllm.utils import global_state
 
 # It's just because the name MMGPT was used for model training in the early stages of research.
 chatbot_name = "[AnyGPT]"
@@ -23,16 +26,35 @@ special_tokens = [
 system_prompt = "You are an AI assistant named MMGPT who can understand and generate multimodal content, including text, speech, images and audio."
 
 
+def drop_tokens(item):
+    mean = max(min(global_state.global_step / 30000, 0.999), 0.001)
+    sd = 0.1
+    n = mean * (1 - mean) / sd**2
+    a = mean * n
+    b = (1 - mean) * n
+    drop_ratio = np.random.beta(a, b, 1)
+    tokens = item.split(" ")
+    mean_num_tokens = int(len(tokens) * mean)
+    num_tokens = min(
+        max(int(len(tokens) * drop_ratio), mean_num_tokens - 5), mean_num_tokens + 5
+    )
+    return " ".join(tokens[num_tokens:])
+
+
 class Prompter:
     def __init__(self, verbose: bool = False):
         self._verbose = verbose
 
-    def generate_template(self, input_tokens, output_tokens=None) -> str:
+    def generate_template(
+        self,
+        input_tokens,
+        output_tokens=None,
+    ) -> str:
+        instruction = f"You are {chatbot_name}. You are chatting with {user_name}. "
         if output_tokens is None:
-            prompt = f"{user_name}: Let's chat.{input_tokens}{user_end} {chatbot_name}: <sosp>"
+            prompt = f"{instruction} {text_ins_sep} {user_name}: {input_tokens} {user_end} {chatbot_name}: {response_sep}"
             return prompt
-
-        prompt = f"{user_name}: Let's chat.{input_tokens}{user_end} {chatbot_name}: {output_tokens}{chatbot_end}"
+        prompt = f"{instruction} {text_ins_sep} {user_name}: {input_tokens} {user_end} {chatbot_name}: {response_sep} {output_tokens} {chatbot_end}"
         return prompt
 
 
@@ -47,13 +69,69 @@ class COTPrompter:
         output_tokens=None,
         output_transcript=None,
     ) -> str:
+        instruction = "Step by step, give me the transcript of the provided audio, a chat response to the transcript, and read the response."
+
         if output_tokens is None:
-            prompt = f"{user_name}: {text_ins_sep} Step by step, give me the transcript of the provided audio, a chat response to the transcript, and read the response. {input_tokens} {user_end} {chatbot_name}: {response_sep}"
+            prompt = f"{instruction} {text_ins_sep} {user_name}: {input_tokens} {user_end} {chatbot_name}: {response_sep}"
             return prompt
         input_transcript = clean_gigaspeech_tokens(input_transcript).lower()
         output_transcript = clean_gigaspeech_tokens(output_transcript).lower()
 
-        prompt = f"{user_name}: {text_ins_sep} Step by step, give me the transcript of the provided audio, a chat response to the transcript, and read the response. {input_tokens} {user_end} {chatbot_name}: {response_sep} {input_transcript}\n {chatbot_name}: {output_transcript} {output_tokens} {chatbot_end}"
+        prompt = f"{instruction} {text_ins_sep} {user_name}: {input_tokens} {user_end} {chatbot_name}: {response_sep} {input_transcript}\n {chatbot_name}: {output_transcript} {output_tokens} {chatbot_end}"
+        return prompt
+
+    def generate_implicit_template(
+        self,
+        input_tokens,
+        input_transcript=None,
+        output_tokens=None,
+        output_transcript=None,
+    ) -> str:
+        instruction = (
+            f"You are {chatbot_name}. You are chatting with {user_name}. "
+            + drop_tokens(
+                "Step by step, give me the transcript of the provided audio, a chat response to the transcript, and read the response."
+            )
+        )
+        if output_tokens is None:
+            prompt = f"{instruction} {text_ins_sep} {user_name}: {input_tokens} {user_end} {chatbot_name}: {response_sep}"
+            return prompt
+        input_transcript = drop_tokens(
+            clean_gigaspeech_tokens(input_transcript).lower()
+        )
+        output_transcript = drop_tokens(
+            clean_gigaspeech_tokens(output_transcript).lower()
+        )
+
+        prompt = f"{instruction} {text_ins_sep} {user_name}: {input_tokens} {user_end} {chatbot_name}: {response_sep} {input_transcript}\n {chatbot_name}: {output_transcript} {output_tokens} {chatbot_end}"
+        return prompt
+
+
+class SodaPrompter:
+    def __init__(self, context_range=(1, 99)):
+        self.context_range = context_range
+
+    def generate_template(self, context, response_tokens=None):
+        num_contexts = random.randint(
+            self.context_range[0], min(self.context_range[1], len(context))
+        )
+        dialogue = []
+        for i, turn in enumerate(context):
+            if (len(context) - i) % 2 == 0:
+                header = f"{chatbot_name}:"
+                footer = chatbot_end
+            else:
+                header = f"{user_name}:"
+                footer = user_end
+            dialogue.append(header + turn + footer)
+        context = "\n".join(dialogue[max(len(context) - num_contexts, 0) :])
+
+        instruction = f"You are {chatbot_name}. You are chatting with {user_name}."
+        if response_tokens is None:
+            prompt = f"{instruction} {text_ins_sep} {context}\n[AnyGPT]: {response_sep}"
+        else:
+            prompt = f"{instruction} {text_ins_sep} {context}\n[AnyGPT]: {response_sep} {response_tokens} {chatbot_end}"
+
         return prompt
 
 
@@ -75,8 +153,40 @@ class SodaCOTPrompter:
                 footer = user_end
             dialogue.append(header + turn + footer)
         context = "\n".join(dialogue[max(len(context) - num_contexts, 0) :])
+
+        instruction = "Step by step, give me a chat response to the dialogue, and read the response."
         if response_tokens is None or output_transcript is None:
-            prompt = f"{user_name}: {text_ins_sep} Step by step, give me a chat response to the dialogue, and read the response.\n {context}\n[AnyGPT]: {response_sep}"
+            prompt = f"{instruction} {text_ins_sep} {context}\n[AnyGPT]: {response_sep}"
         else:
-            prompt = f"{user_name}: {text_ins_sep} Step by step, give me a chat response to the dialogue, and read the response.\n {context}\n[AnyGPT]: {response_sep} {output_transcript} {response_tokens} {chatbot_end}"
+            prompt = f"{instruction} {text_ins_sep} {context}\n[AnyGPT]: {response_sep} {output_transcript} {response_tokens} {chatbot_end}"
+
+        return prompt
+
+    def generate_implicit_template(
+        self, context, response_tokens=None, output_transcript=None
+    ):
+        num_contexts = random.randint(
+            self.context_range[0], min(self.context_range[1], len(context))
+        )
+        dialogue = []
+        for i, turn in enumerate(context):
+            if (len(context) - i) % 2 == 0:
+                header = f"{chatbot_name}:"
+                footer = chatbot_end
+            else:
+                header = f"{user_name}:"
+                footer = user_end
+            dialogue.append(header + turn + footer)
+        context = "\n".join(dialogue[max(len(context) - num_contexts, 0) :])
+
+        instruction = (
+            f"You are {chatbot_name}. You are chatting with {user_name}. "
+            + drop_tokens(
+                "Step by step, give me a chat response to the dialogue, and read the response."
+            )
+        )
+        if response_tokens is None or output_transcript is None:
+            prompt = f"{instruction} {text_ins_sep} {context}\n[AnyGPT]: {response_sep}"
+        else:
+            prompt = f"{instruction} {text_ins_sep} {context}\n[AnyGPT]: {response_sep} {drop_tokens(output_transcript)} {response_tokens} {chatbot_end}"
         return prompt
