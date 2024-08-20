@@ -1,16 +1,28 @@
 # pylint: disable=wrong-import-position, wrong-import-order
+from multiprocessing.shared_memory import SharedMemory
 from pathlib import Path
 
+import numpy as np
 import omegaconf
 
 from speechllm.utils import check_hpu
 
 if check_hpu():
-    # workaround for broken frozen ddp training
-    # import habana_frameworks.torch.distributed.hccl # noqa: F401 pylint: disable=unused-import
+    import habana_frameworks.torch.distributed.hccl  # noqa: F401 pylint: disable=unused-import
     import habana_frameworks.torch.core as htcore  # noqa: F401 pylint: disable=unused-import
-    import habana_frameworks.torch.gpu_migration  # noqa: F401 pylint: disable=unused-import
+
+    # Deprecated comment? workaround for broken frozen ddp training
+    # modelcheckpointing on distributed would not save the best ckpt when gpu_migration is enabled
+    # because dist sync checks for hccl not nccl
+    # import habana_frameworks.torch.gpu_migration  # noqa: F401 pylint: disable=unused-import
     from habana_frameworks.torch.hpex.experimental.transformer_engine import recipe
+
+    # No significant performance improvement
+    # from optimum.habana.transformers.modeling_utils import adapt_transformers_to_gaudi
+    # from optimum.habana.transformers.models import GaudiLlamaAttention
+    # import transformers
+    # transformers.models.llama.modeling_llama.LlamaAttention = GaudiLlamaAttention
+    # adapt_transformers_to_gaudi()
 
 import hydra
 import lightning as L
@@ -18,8 +30,8 @@ import torch
 from hydra.utils import instantiate
 from lightningtools import reporter
 
-# torch.multiprocessing.set_start_method("forkserver", force=True)
-# torch.multiprocessing.get_context('forkserver').set_forkserver_preload(['speechllm.utils'])
+# training crashes once in a while without forkserver for reasons unknown
+torch.multiprocessing.set_start_method("forkserver", force=True)
 
 
 @hydra.main(
@@ -34,6 +46,15 @@ def main(cfg):
     wandb.save("hydra-config.yaml")
     """
     # os.chdir(hydra.utils.get_original_cwd())
+
+    # Initializes a shared memory for global step
+    # I have no idea what I am doing but it works
+    try:
+        shm = SharedMemory(create=True, size=4, name="global_step")
+    except FileExistsError:
+        shm = SharedMemory(create=False, size=4, name="global_step")
+    arr = np.ndarray([1], np.int32, shm.buf)
+    arr[0] = 0
 
     L.fabric.utilities.seed.seed_everything(42, workers=True)
     with torch.no_grad():

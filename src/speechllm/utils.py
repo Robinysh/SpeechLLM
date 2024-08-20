@@ -49,12 +49,3 @@ def dict_list_to_list_dict(dl):
 
 def list_dict_to_dict_list(ld):
     return {k: [dic[k] for dic in ld] for k in ld[0]}
-
-
-# pylint: disable-next=too-few-public-methods
-class GlobalState:
-    def __init__(self):
-        self.global_step = 0
-
-
-global_state = GlobalState()
