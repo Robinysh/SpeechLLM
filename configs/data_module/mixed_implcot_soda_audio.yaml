@@ -58,8 +58,8 @@ mixed_val_dataset:
     - ${data_module.gigaspeech_val_dataset}
     - ${data_module.soda_val_dataset}
   probabilities:
-    - 0.8
-    - 0.2
+    - 0.5
+    - 0.5
   stopping_strategy: 'all_exhausted'
 num_preprocess_workers: 16
 num_workers: 2
@@ -67,13 +67,13 @@ persistent_workers: false
 pin_memory: false
 prefetch_factor: 2
 soda_train_dataset:
-  _target_: speechllm.data.soda.pipeline.soda_tts_implicit_cot_pipeline
+  _target_: speechllm.data.soda.pipeline.soda_asr_tts_implicit_cot_pipeline
   cache_dir: ${paths.dataset_cache}
   database: ${database.train.soda}
   num_workers: ${data_module.num_preprocess_workers}
   stage: train
 soda_val_dataset:
-  _target_: speechllm.data.soda.pipeline.soda_tts_implicit_cot_pipeline
+  _target_: speechllm.data.soda.pipeline.soda_asr_tts_implicit_cot_pipeline
   cache_dir: ${paths.dataset_cache}
   database: ${database.val.soda}
   num_workers: ${data_module.num_preprocess_workers}

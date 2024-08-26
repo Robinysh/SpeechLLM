@@ -72,7 +72,7 @@ class COTPrompter:
         output_tokens=None,
         output_transcript=None,
     ) -> str:
-        instruction = "Step by step, give me the transcript of the provided audio, a chat response to the transcript, and read the response."
+        instruction = f"You are {chatbot_name}. You are chatting with {user_name}. Step by step, give me the transcript of the provided audio, a chat response to the transcript, and read the response."
 
         if output_tokens is None:
             prompt = f"{instruction} {text_ins_sep} {user_name}: {input_tokens} {user_end} {chatbot_name}: {response_sep}"
@@ -80,7 +80,7 @@ class COTPrompter:
         input_transcript = clean_gigaspeech_tokens(input_transcript).lower()
         output_transcript = clean_gigaspeech_tokens(output_transcript).lower()
 
-        prompt = f"{instruction} {text_ins_sep} {user_name}: {input_tokens} {user_end} {chatbot_name}: {response_sep} {input_transcript}\n {chatbot_name}: {output_transcript} {output_tokens} {chatbot_end}"
+        prompt = f"{instruction} {text_ins_sep} {user_name}: {input_tokens} {user_end} {chatbot_name}: {response_sep} {input_transcript}\n{chatbot_name}: {output_transcript} {output_tokens} {chatbot_end}"
         return prompt
 
     def generate_implicit_template(
@@ -192,4 +192,95 @@ class SodaCOTPrompter:
             prompt = f"{instruction} {text_ins_sep} {context}\n[AnyGPT]: {response_sep}"
         else:
             prompt = f"{instruction} {text_ins_sep} {context}\n[AnyGPT]: {response_sep} {drop_tokens(output_transcript)} {response_tokens} {chatbot_end}"
+        return prompt
+
+
+class SodaASRTTSCOTPrompter:
+    def __init__(self, context_range=(1, 99)):
+        self.context_range = context_range
+
+    def generate_template(
+        self,
+        audio_tokens,
+        context=None,
+        context_interval=None,
+        inference=False,
+    ):
+        audio_tokens = audio_tokens[context_interval[0] : context_interval[1]]
+        context = context[context_interval[0] : context_interval[1]]
+
+        dialogue = []
+        for i, (turn_token, turn_context) in enumerate(zip(audio_tokens, context)):
+            if inference and i == len(context) - 1:
+                break
+            if (len(context) - i) % 2 == 1:
+                header = f"{chatbot_name}:"
+                footer = chatbot_end
+                if i > 0:
+                    dialogue.append(
+                        f"{header} {response_sep} {context[i - 1]}\n{chatbot_name}: {turn_context} {turn_token} {footer}"
+                    )
+                else:
+                    dialogue.append(
+                        f"{header} {response_sep} {turn_context} {turn_token} {footer}"
+                    )
+            else:
+                header = f"{user_name}:"
+                footer = user_end
+                dialogue.append(f"{header} {turn_token} {footer}")
+        dialogue = "\n".join(dialogue)
+
+        instruction = (
+            f"You are {chatbot_name}. You are chatting with {user_name}. "
+            + "Step by step, give me the transcript of the provided audio, a chat response to the transcript, and read the response."
+        )
+        prompt = f"{instruction} {text_ins_sep} {dialogue}"
+        if inference:
+            prompt = f"{prompt}\n[AnyGPT]: {response_sep}"
+        return prompt
+
+    def generate_implicit_template(
+        self,
+        audio_tokens,
+        context=None,
+        context_interval=None,
+        inference=False,
+    ):
+        audio_tokens = audio_tokens[context_interval[0] : context_interval[1]]
+        context = context[context_interval[0] : context_interval[1]]
+
+        dialogue = []
+        for i, (turn_token, turn_context) in enumerate(zip(audio_tokens, context)):
+            if inference and i == len(context) - 1:
+                break
+            # ic(i, turn_token, turn_context)
+            if (len(context) - i) % 2 == 1:
+                header = f"{chatbot_name}:"
+                footer = chatbot_end
+                if i > 0:
+                    dialogue.append(
+                        # f"{header} {response_sep} {drop_tokens(context[i - 1])}\n{chatbot_name}: {drop_tokens(turn_context)} {turn_token} {footer}"
+                        f"{header} {response_sep} {drop_tokens(context[i - 1])}\n{chatbot_name}: {turn_context} {turn_token} {footer}"
+                    )
+                else:
+                    dialogue.append(
+                        # f"{header} {response_sep} {drop_tokens(turn_context)} {turn_token} {footer}"
+                        f"{header} {response_sep} {turn_context} {turn_token} {footer}"
+                    )
+            else:
+                header = f"{user_name}:"
+                footer = user_end
+                dialogue.append(f"{header} {turn_token} {footer}")
+        dialogue = "\n".join(dialogue)
+
+        instruction = (
+            f"You are {chatbot_name}. You are chatting with {user_name}. "
+            # + drop_tokens(
+            + (
+                "Step by step, give me the transcript of the provided audio, a chat response to the transcript, and read the response."
+            )
+        )
+        prompt = f"{instruction} {text_ins_sep} {dialogue}"
+        if inference:
+            prompt = f"{prompt}\n[AnyGPT]: {response_sep}"
         return prompt

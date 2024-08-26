@@ -6,8 +6,10 @@ train:
     transcript: ${paths.gigaspeech_root}/dialogue_pairs/
   soda:
     audio: ${paths.soda_root}/train/audio/
+    dialogue_audio: ${paths.soda_root}/train/dialogue_audio/
     json: ${paths.soda_root}/train/json
     tokens: ${paths.soda_root}/train/tokens/
+    tts_tokens: ${paths.soda_root}/train/tts_tokens/
 val:
   gigaspeech:
     audio: ${paths.gigaspeech_root}/audio_pairs/
@@ -16,5 +18,7 @@ val:
     transcript: ${paths.gigaspeech_root}/dialogue_pairs/
   soda:
     audio: ${paths.soda_root}/test/audio/
+    dialogue_audio: ${paths.soda_root}/test/dialogue_audio/
     json: ${paths.soda_root}/test/json
     tokens: ${paths.soda_root}/test/tokens/
+    tts_tokens: ${paths.soda_root}/test/tts_tokens/
