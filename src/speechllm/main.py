@@ -1,4 +1,5 @@
 # pylint: disable=wrong-import-position, wrong-import-order
+import os
 from multiprocessing.shared_memory import SharedMemory
 from pathlib import Path
 
@@ -8,13 +9,14 @@ import omegaconf
 from speechllm.utils import check_hpu
 
 if check_hpu():
-    import habana_frameworks.torch.distributed.hccl  # noqa: F401 pylint: disable=unused-import
-    import habana_frameworks.torch.core as htcore  # noqa: F401 pylint: disable=unused-import
-
     # Deprecated comment? workaround for broken frozen ddp training
     # modelcheckpointing on distributed would not save the best ckpt when gpu_migration is enabled
     # because dist sync checks for hccl not nccl
     # import habana_frameworks.torch.gpu_migration  # noqa: F401 pylint: disable=unused-import
+
+    import habana_frameworks.torch.distributed.hccl  # noqa: F401 pylint: disable=unused-import
+    import habana_frameworks.torch.core as htcore  # noqa: F401 pylint: disable=unused-import
+
     from habana_frameworks.torch.hpex.experimental.transformer_engine import recipe
 
     # No significant performance improvement
@@ -50,9 +52,13 @@ def main(cfg):
     # Initializes a shared memory for global step
     # I have no idea what I am doing but it works
     try:
-        shm = SharedMemory(create=True, size=4, name="global_step")
+        shm = SharedMemory(
+            create=True, size=4, name=f"global_step_{os.environ['MASTER_PORT']}"
+        )
     except FileExistsError:
-        shm = SharedMemory(create=False, size=4, name="global_step")
+        shm = SharedMemory(
+            create=False, size=4, name=f"global_step_{os.environ['MASTER_PORT']}"
+        )
     arr = np.ndarray([1], np.int32, shm.buf)
     arr[0] = 0
 

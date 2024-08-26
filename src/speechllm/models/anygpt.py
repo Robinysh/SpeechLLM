@@ -176,6 +176,7 @@ def constructor(
                 max_new_tokens=2048,
                 # max_new_tokens=1024,
                 max_time=30,
+                repetition_penalty=1.05,
                 generation_config=generation_config,
             )
             # -1 for keeping <sosp>

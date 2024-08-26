@@ -1,4 +1,5 @@
 import logging
+import os
 import traceback
 from functools import partial
 from multiprocessing.shared_memory import SharedMemory
@@ -185,7 +186,9 @@ class Model(BaseLightningModule):
         # on_batch_start does not work
         self.log_batch(*args, **kwargs)
         reporter.report("trainer/global_step", self.global_step)
-        shm = SharedMemory(create=False, size=4, name="global_step")
+        shm = SharedMemory(
+            create=False, size=4, name=f"global_step_{os.environ['MASTER_PORT']}"
+        )
         arr = np.ndarray([1], np.int32, shm.buf)
         arr[0] = self.global_step
 

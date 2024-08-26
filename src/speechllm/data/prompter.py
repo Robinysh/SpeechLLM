@@ -1,4 +1,5 @@
 # pylint: skip-file
+import os
 import random
 from multiprocessing.shared_memory import SharedMemory
 
@@ -27,7 +28,9 @@ system_prompt = "You are an AI assistant named MMGPT who can understand and gene
 
 
 def drop_tokens(item):
-    shm = SharedMemory(create=False, size=4, name="global_step")
+    shm = SharedMemory(
+        create=False, size=4, name=f"global_step_{os.environ['MASTER_PORT']}"
+    )
     arr = np.ndarray([1], np.int32, shm.buf)
     global_step = arr[0]
     mean = max(min(global_step / 15000, 0.999), 0.001)
