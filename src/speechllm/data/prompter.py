@@ -208,6 +208,7 @@ class SodaASRTTSCOTPrompter:
         context=None,
         context_interval=None,
         inference=False,
+        teacher=False,
     ):
         audio_tokens = audio_tokens[context_interval[0] : context_interval[1]]
         context = context[context_interval[0] : context_interval[1]]
@@ -219,6 +220,11 @@ class SodaASRTTSCOTPrompter:
             if (len(context) - i) % 2 == 1:
                 header = f"{chatbot_name}:"
                 footer = chatbot_end
+                if teacher:
+                    dialogue.append(
+                        f"{header} {response_sep} {context[i - 1]}\n{chatbot_name}: {turn_context} <sosp>"
+                    )
+                    continue
                 if i > 0:
                     dialogue.append(
                         f"{header} {response_sep} {context[i - 1]}\n{chatbot_name}: {turn_context} {turn_token} {footer}"
@@ -256,19 +262,19 @@ class SodaASRTTSCOTPrompter:
         for i, (turn_token, turn_context) in enumerate(zip(audio_tokens, context)):
             if inference and i == len(context) - 1:
                 break
-            # ic(i, turn_token, turn_context)
             if (len(context) - i) % 2 == 1:
                 header = f"{chatbot_name}:"
                 footer = chatbot_end
                 if i > 0:
                     dialogue.append(
                         # f"{header} {response_sep} {drop_tokens(context[i - 1])}\n{chatbot_name}: {drop_tokens(turn_context)} {turn_token} {footer}"
-                        f"{header} {response_sep} {drop_tokens(context[i - 1])}\n{chatbot_name}: {turn_context} {turn_token} {footer}"
+                        # f"{header} {response_sep} {drop_tokens(context[i - 1])}\n{chatbot_name}: {turn_context} {turn_token} {footer}"
+                        f"{header} {response_sep} {drop_tokens(context[i - 1], global_step=9999999)}\n{chatbot_name}: {drop_tokens(turn_context)} {turn_token} {footer}"
                     )
                 else:
                     dialogue.append(
                         # f"{header} {response_sep} {drop_tokens(turn_context)} {turn_token} {footer}"
-                        f"{header} {response_sep} {turn_context} {turn_token} {footer}"
+                        f"{header} {response_sep} {drop_tokens(turn_context)} {turn_token} {footer}"
                     )
             else:
                 header = f"{user_name}:"

@@ -161,9 +161,17 @@ def constructor(
 
     def forward(model_input):
         model.train()
-        lm_output = model(**model_input)
+        lm_output = model(**model_input, output_hidden_states=True)
         return {
             "lm_output": lm_output,
+        }
+
+    def get_soft_labels(model_teacher_input):
+        model.eval()
+        with torch.no_grad():
+            teacher_output = model(**model_teacher_input, output_hidden_states=True)
+        return {
+            "teacher_output": teacher_output,
         }
 
     def inference(model_infer_input):
@@ -202,6 +210,7 @@ def constructor(
     methods = {
         "forward": forward,
         "inference": inference,
+        "get_soft_labels": get_soft_labels,
     }
 
     return {"modules": modules, "methods": methods}

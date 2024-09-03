@@ -1,4 +1,5 @@
 import logging
+import operator
 
 import torch
 
@@ -49,3 +50,7 @@ def dict_list_to_list_dict(dl):
 
 def list_dict_to_dict_list(ld):
     return {k: [dic[k] for dic in ld] for k in ld[0]}
+
+
+def listrfind(lst, value):
+    return len(lst) - operator.indexOf(reversed(lst), value) - 1

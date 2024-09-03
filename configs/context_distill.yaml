@@ -2,20 +2,20 @@ config_optimizers:
   decay_step: 105000
   init_lr: 2.0e-07
   learning_rate: 4.0e-05
-  lr_restart_period: 1000
+  lr_restart_period: 3000
   optimizer: adam
-  warmup_step: 1000
+  warmup_step: 3000
   weight_decay: 0
 defaults:
   - database: default
-  - data_module: default
-  - model: anygpt
-  - losses: default
+  - data_module: soda_distill_implcot
+  - model: frozen_context_distill
+  - losses: distill
   - callbacks: default
-  - trainer: default
+  - trainer: hpu_ddp
   - lightning_module: default
   - logger: default
-  - paths: default
+  - paths: laion
   - _self_
 last_ckpt: null
 load_optimizer: true

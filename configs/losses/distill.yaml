@@ -1,0 +1,26 @@
+loss_functions:
+  anygpt_loss:
+    loss_fn:
+      _partial_: true
+      _target_: speechllm.losses.anygpt_loss
+    scale: 1
+  context_distill_loss:
+    loss_fn:
+      _partial_: true
+      _target_: speechllm.losses.context_distill_loss
+    scale: 50
+  context_hidden_state_distill_loss:
+    loss_fn:
+      _partial_: true
+      _target_: speechllm.losses.context_hidden_state_distill_loss
+    scale: 10
+loss_sets:
+  default:
+    default:
+      - anygpt_loss
+      - context_distill_loss
+      - context_hidden_state_distill_loss
+    val:
+      - anygpt_loss
+      - context_distill_loss
+      - context_hidden_state_distill_loss

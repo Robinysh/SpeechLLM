@@ -1,0 +1,22 @@
+inference_pipeline:
+  - fn: inference
+    module: anygpt
+modules:
+  anygpt:
+    _target_: speechllm.models.anygpt.constructor
+    model_fpath: ${paths.pretrained_models}/AnyGPT-chat
+    offline: ${offline}
+  teacher_anygpt:
+    _target_: speechllm.models.teacher_anygpt.constructor
+    model_fpath: ${paths.pretrained_models}/AnyGPT-chat
+    offline: ${offline}
+param_group:
+  default:
+    - anygpt
+pipelines:
+  default:
+    default:
+      - fn: forward
+        module: anygpt
+      - fn: forward
+        module: teacher_anygpt

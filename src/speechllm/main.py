@@ -71,6 +71,7 @@ def main(cfg):
     if cfg.load_optimizer or cfg.last_ckpt is None:
         lightning_module = instantiate(cfg.lightning_module)
         lightning_module.set_config(cfg)
+        lightning_module.strict_loading = False
         if trainer.precision_plugin.precision == "fp8" and check_hpu():
             trainer.precision_plugin.convert_modules(
                 lightning_module,

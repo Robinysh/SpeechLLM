@@ -494,7 +494,7 @@ def soda_asr_tts_implicit_cot_pipeline(
 
     # Operations below dont cache and run on-the-fly
     ds = ds.to_iterable_dataset(num_shards=32)
-    ds = ds.shuffle(seed=42, buffer_size=64)
+    ds = ds.shuffle(seed=41, buffer_size=512)
 
     ds = ds.map(
         WrapInputOutput(
@@ -527,6 +527,30 @@ def soda_asr_tts_implicit_cot_pipeline(
                 "context_interval": "context_interval",
             },
             output_name="infer_prompt",
+        )
+    )
+
+    ds = ds.map(
+        WrapInputOutput(
+            prompter.generate_template,
+            kwarg_maps={
+                "audio_tokens": "audio_tokens",
+                "context": "context",
+                "context_interval": "context_interval",
+            },
+            output_name="teacher_prompt",
+        )
+    )
+
+    ds = ds.map(
+        WrapInputOutput(
+            partial(prompter.generate_template, teacher=True),
+            kwarg_maps={
+                "audio_tokens": "audio_tokens",
+                "context": "context",
+                "context_interval": "context_interval",
+            },
+            output_name="teacher_infer_prompt",
         )
     )
 
@@ -578,6 +602,8 @@ def soda_asr_tts_implicit_cot_pipeline(
         [
             "prompt",
             "infer_prompt",
+            "teacher_prompt",
+            "teacher_infer_prompt",
             "input_audio",
             "input_transcript",
             "output_audio",

@@ -110,16 +110,9 @@ class Model(BaseLightningModule):
         }
 
     def validation_step(self, batch, batch_idx):
-        try:
-            model_output = self.pipelines[self.optimizer_idx_map[0]](
-                **batch, step=self.global_step
-            )
-        except RuntimeError as e:
-            if "Graph compile failed." in str(e):
-                torch.save(batch, f"err_{batch_idx}.pt")
-                print(e)
-                return None
-            raise e
+        model_output = self.pipelines[self.optimizer_idx_map[0]](
+            **batch, step=self.global_step
+        )
 
         if model_output is None:
             return None
@@ -143,12 +136,22 @@ class Model(BaseLightningModule):
             first_data["model_infer_input"] = {
                 k: v[:1] for k, v in batch["model_infer_input"].items()
             }
+
+            teacher_first_data = {
+                "model_infer_input": {
+                    k: v[:1] for k, v in batch["model_teacher_infer_input"].items()
+                }
+            }
+
             try:
                 reporter.logging_disabled = True
                 model_inference_output = self.forward(first_data)
+                model_teacher_inference_output = self.forward(teacher_first_data)
                 reporter.logging_disabled = False
                 if model_inference_output is not None:
-                    self.log_eval(batch, model_output, model_inference_output)
+                    self.log_eval(model_inference_output)
+                if model_teacher_inference_output is not None:
+                    self.log_eval(model_teacher_inference_output, prefix="teacher_")
             # pylint: disable-next=broad-exception-caught
             except Exception as e:
                 traceback.print_exc()
@@ -161,7 +164,7 @@ class Model(BaseLightningModule):
         }
 
     # pylint: disable-next=unused-argument
-    def log_eval(self, batch, model_output, model_inference_output):
+    def log_eval(self, model_inference_output, prefix=""):
         if self.config.paths.pretrained_models is not None:
             decoder_fpath = (
                 Path(self.config.paths.pretrained_models) / "AnyGPT-speech-modules"
@@ -169,13 +172,13 @@ class Model(BaseLightningModule):
         else:
             decoder_fpath = None
         reporter.report(
-            "text/tokens_prediction",
+            f"text/{prefix}tokens_prediction",
             model_inference_output,
             tag="text",
         )
 
         reporter.report(
-            "audio/sample_prediction",
+            f"audio/{prefix}sample_prediction",
             model_inference_output,
             decoder_fpath=decoder_fpath,
             device=self.device,
@@ -207,6 +210,10 @@ class Model(BaseLightningModule):
     def transfer_batch_to_device(self, batch, device, dataloader_idx):
         batch["model_input"] = batch["model_input"].to(device)
         batch["model_infer_input"] = batch["model_infer_input"].to(device)
+        batch["model_teacher_input"] = batch["model_teacher_input"].to(device)
+        batch["model_teacher_infer_input"] = batch["model_teacher_infer_input"].to(
+            device
+        )
         return batch
 
     # pylint: disable-next=unused-argument
@@ -246,6 +253,20 @@ class Model(BaseLightningModule):
             batch["prompt"],
             tag="text",
         )
+
+        if "teacher_prompt" in batch:
+            reporter.report(
+                "text/teacher_prompt",
+                batch["teacher_prompt"],
+                tag="text",
+            )
+
+        if "teacher_infer_prompt" in batch:
+            reporter.report(
+                "text/teacher_infer_prompt",
+                batch["teacher_infer_prompt"],
+                tag="text",
+            )
 
     def detach_values(self, model_output):
         result = {}
@@ -296,7 +317,7 @@ class Model(BaseLightningModule):
                 return [
                     {
                         "optimizer": optimizer,
-                        "lr_scheduler": lr_dict,
+                        # "lr_scheduler": lr_dict,
                     },
                 ]
 
@@ -459,6 +480,12 @@ class Model(BaseLightningModule):
             }
 
     def on_save_checkpoint(self, checkpoint):
+        to_be_removed = []
+        for weight_name in checkpoint["state_dict"].keys():
+            if "teacher_anygpt" in weight_name:
+                to_be_removed.append(weight_name)
+        for name in to_be_removed:
+            del checkpoint["state_dict"][name]
         if self.optimizer_dict is not None:
             checkpoint["optimizer_state"] = {
                 self.p2name_dict[k]: v.state_dict()

@@ -1,7 +1,7 @@
 import torch
 
 from speechllm.data.utils import tokenize_func
-from speechllm.utils import list_dict_to_dict_list
+from speechllm.utils import list_dict_to_dict_list, listrfind
 
 
 def reflective_pad_sequence(sequences, padding_value=0):
@@ -29,50 +29,33 @@ def to_list_of_tensor(x):
 
 
 def collate(row, tokenizer):
-    """
-    audio_lens = [len(row) for row in rows["audio"]]
-    audio = reflective_pad_sequence(rows["audio"])
-
-    hubert_lens = [len(row) for row in rows["hubert_embs"]]
-    hubert_embs = reflective_pad_sequence(rows["hubert_embs"])
-
-    token_type_ids = pad_sequence(
-        to_list_of_tensor(rows["token_type_ids"]), padding_value=0, batch_first=True
-    )
-
-    input_ids = pad_sequence(
-        to_list_of_tensor(rows["input_ids"]), padding_value=0, batch_first=True
-    ).long()
-    attention_mask = pad_sequence(
-        to_list_of_tensor(rows["attention_mask"]), padding_value=0, batch_first=True
-    )
-
-    audio_info = rows["audio_info"]
-    audio_info = {k: [dic[k][0] for dic in audio_info] for k in audio_info[0]}
-    audio_info["input_audios"] = pad_sequence(
-        audio_info["input_audios"], batch_first=True
-    )
-    audio_info["input_audio_lengths"] = torch.stack(audio_info["input_audio_lengths"])
-
-    return {
-        "audio": audio,
-        "audio_lens": audio_lens,
-        "hubert_lens": hubert_lens,
-        "hubert_embs": hubert_embs,
-        "fpath": rows["fpath"],
-        "duration": torch.Tensor(rows["duration"]),
-        "text": rows["text"],
-        "input_ids": input_ids,
-        "token_type_ids": token_type_ids,
-        "attention_mask": attention_mask,
-        "audio_info": audio_info,
-        "raw_text": rows["raw_text"],
-        "raw_tokens": rows["raw_tokens"],
-    }
-    """
     row = list_dict_to_dict_list(row)
     row["model_input"] = tokenize_func(row["prompt"], tokenizer)
     row["model_infer_input"] = tokenize_func(row["infer_prompt"], tokenizer)
+    return row
+
+
+def distill_collate(row, tokenizer):
+    row = list_dict_to_dict_list(row)
+    row["model_input"] = tokenize_func(row["prompt"], tokenizer)
+    row["model_teacher_input"] = tokenize_func(row["teacher_prompt"], tokenizer)
+    row["model_infer_input"] = tokenize_func(row["infer_prompt"], tokenizer)
+    row["model_teacher_infer_input"] = tokenize_func(
+        row["teacher_infer_prompt"], tokenizer
+    )
+
+    row["answer_start_position"] = []
+    for item in row["model_input"].input_ids:
+        row["answer_start_position"].append(
+            listrfind(item, tokenizer.convert_tokens_to_ids("<sosp>"))
+        )
+
+    row["teacher_answer_start_position"] = []
+    for item in row["model_teacher_input"].input_ids:
+        row["teacher_answer_start_position"].append(
+            listrfind(item, tokenizer.convert_tokens_to_ids("<sosp>"))
+        )
+
     return row
 
 
