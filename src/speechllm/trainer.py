@@ -137,20 +137,22 @@ class Model(BaseLightningModule):
                 k: v[:1] for k, v in batch["model_infer_input"].items()
             }
 
-            teacher_first_data = {
-                "model_infer_input": {
-                    k: v[:1] for k, v in batch["model_teacher_infer_input"].items()
+            if "model_teacher_input" in batch:
+                teacher_first_data = {
+                    "model_infer_input": {
+                        k: v[:1] for k, v in batch["model_teacher_infer_input"].items()
+                    }
                 }
-            }
 
             try:
                 reporter.logging_disabled = True
                 model_inference_output = self.forward(first_data)
-                model_teacher_inference_output = self.forward(teacher_first_data)
+                if "model_teacher_input" in batch:
+                    model_teacher_inference_output = self.forward(teacher_first_data)
                 reporter.logging_disabled = False
                 if model_inference_output is not None:
                     self.log_eval(model_inference_output)
-                if model_teacher_inference_output is not None:
+                if "model_teacher_input" in batch:
                     self.log_eval(model_teacher_inference_output, prefix="teacher_")
             # pylint: disable-next=broad-exception-caught
             except Exception as e:
@@ -214,10 +216,11 @@ class Model(BaseLightningModule):
     def transfer_batch_to_device(self, batch, device, dataloader_idx):
         batch["model_input"] = batch["model_input"].to(device)
         batch["model_infer_input"] = batch["model_infer_input"].to(device)
-        batch["model_teacher_input"] = batch["model_teacher_input"].to(device)
-        batch["model_teacher_infer_input"] = batch["model_teacher_infer_input"].to(
-            device
-        )
+        if "model_teacher_input" in batch:
+            batch["model_teacher_input"] = batch["model_teacher_input"].to(device)
+            batch["model_teacher_infer_input"] = batch["model_teacher_infer_input"].to(
+                device
+            )
         return batch
 
     # pylint: disable-next=unused-argument

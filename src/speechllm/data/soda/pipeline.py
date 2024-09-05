@@ -417,6 +417,17 @@ def soda_asr_tts_cot_pipeline(
 
     ds = ds.map(
         WrapInputOutput(
+            processes.get_input_transcript,
+            kwarg_maps={
+                "context": "context",
+                "context_interval": "context_interval",
+            },
+            output_name="input_transcript",
+        )
+    )
+
+    ds = ds.map(
+        WrapInputOutput(
             processes.get_output_transcript,
             kwarg_maps={
                 "context": "context",
@@ -431,6 +442,7 @@ def soda_asr_tts_cot_pipeline(
             "prompt",
             "infer_prompt",
             "input_audio",
+            "input_transcript",
             "output_audio",
             "output_transcript",
         ]
