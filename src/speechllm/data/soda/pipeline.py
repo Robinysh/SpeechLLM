@@ -54,7 +54,7 @@ def soda_pipeline(
 
     Path(cache_dir / "filtered").mkdir(parents=True, exist_ok=True)
     ds = ds.filter(
-        lambda x: processes.filter_long_audio(x, limit=701),
+        lambda x: processes.filter_long_audio(x, limit=600),
         num_proc=num_workers,
         load_from_cache_file=use_cache,
         cache_file_name=str(cache_dir / "filtered" / f"{stage}.arrow"),
@@ -72,7 +72,7 @@ def soda_pipeline(
 
     # Operations below dont cache and run on-the-fly
     ds = ds.to_iterable_dataset(num_shards=32)
-    ds = ds.shuffle(seed=42, buffer_size=100)
+    ds = ds.shuffle(seed=42, buffer_size=512)
     prompt_wrapped = WrapInputOutput(
         prompter.generate_template,
         kwarg_maps={
@@ -154,7 +154,7 @@ def soda_tts_cot_pipeline(
 
     Path(cache_dir / "filtered").mkdir(parents=True, exist_ok=True)
     ds = ds.filter(
-        lambda x: processes.filter_long_audio(x, limit=701),
+        lambda x: processes.filter_long_audio(x, limit=600),
         num_proc=num_workers,
         load_from_cache_file=use_cache,
         cache_file_name=str(cache_dir / "filtered" / f"{stage}.arrow"),
@@ -172,7 +172,7 @@ def soda_tts_cot_pipeline(
 
     # Operations below dont cache and run on-the-fly
     ds = ds.to_iterable_dataset(num_shards=32)
-    ds = ds.shuffle(seed=42, buffer_size=100)
+    ds = ds.shuffle(seed=42, buffer_size=512)
     prompt_wrapped = WrapInputOutput(
         prompter.generate_template,
         kwarg_maps={
@@ -255,7 +255,7 @@ def soda_tts_implicit_cot_pipeline(
 
     Path(cache_dir / "filtered").mkdir(parents=True, exist_ok=True)
     ds = ds.filter(
-        lambda x: processes.filter_long_audio(x, limit=700),
+        lambda x: processes.filter_long_audio(x, limit=600),
         num_proc=num_workers,
         load_from_cache_file=use_cache,
         cache_file_name=str(cache_dir / "filtered" / f"{stage}.arrow"),
@@ -273,7 +273,7 @@ def soda_tts_implicit_cot_pipeline(
 
     # Operations below dont cache and run on-the-fly
     ds = ds.to_iterable_dataset(num_shards=32)
-    ds = ds.shuffle(seed=42, buffer_size=64)
+    ds = ds.shuffle(seed=42, buffer_size=512)
     prompt_wrapped = WrapInputOutput(
         prompter.generate_implicit_template,
         kwarg_maps={
@@ -346,7 +346,7 @@ def soda_asr_tts_cot_pipeline(
     Path(cache_dir / "filtered").mkdir(parents=True, exist_ok=True)
     ds = ds.filter(
         lambda x: all(
-            processes.filter_long_audio({"input_tokens": tokens}, limit=700)
+            processes.filter_long_audio({"input_tokens": tokens}, limit=600)
             for tokens in x["audio_tokens"]
         ),
         num_proc=num_workers,
@@ -357,7 +357,7 @@ def soda_asr_tts_cot_pipeline(
 
     # Operations below dont cache and run on-the-fly
     ds = ds.to_iterable_dataset(num_shards=32)
-    ds = ds.shuffle(seed=42, buffer_size=64)
+    ds = ds.shuffle(seed=42, buffer_size=512)
 
     ds = ds.map(
         WrapInputOutput(
