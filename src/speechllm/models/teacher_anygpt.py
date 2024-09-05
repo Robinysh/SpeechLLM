@@ -12,6 +12,7 @@ if check_hpu():
 def constructor(
     offline=False,
     model_fpath=None,
+    restore_ckpt=None,
 ):
     model = LlamaForCausalLM.from_pretrained(
         offline and model_fpath or "fnlp/AnyGPT-chat",
@@ -22,6 +23,11 @@ def constructor(
         use_cache=False,
         local_files_only=offline,
     )
+    if restore_ckpt is not None:
+        ckpt = torch.load(restore_ckpt)
+        ckpt = {k.removeprefix("anygpt."): v for k, v in ckpt["state_dict"].items()}
+        model.load_state_dict(ckpt)
+
     for param in model.parameters():
         param.requires_grad = False
 
