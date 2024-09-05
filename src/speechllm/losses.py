@@ -41,6 +41,19 @@ def context_hidden_state_distill_loss(
     return {"context_hidden_states_distill_loss": sum(losses) / len(losses)}
 
 
+def full_hidden_state_distill_loss(
+    lm_output,
+    teacher_output,
+    model_input,
+):
+    # TODO mask impl
+    preds = torch.stack(lm_output.hidden_states[2:-2], dim=2)
+    teacher = torch.stack(teacher_output.hidden_states[2:-2], dim=2).detach()
+    mask = model_input.attention_mask
+    loss = (((preds - teacher) ** 2).mean((2, 3)) * mask).sum() / mask.sum()
+    return {"context_hidden_states_distill_loss": loss}
+
+
 def context_distill_loss(
     lm_output,
     teacher_output,

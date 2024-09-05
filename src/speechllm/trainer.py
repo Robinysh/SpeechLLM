@@ -195,6 +195,10 @@ class Model(BaseLightningModule):
         arr = np.ndarray([1], np.int32, shm.buf)
         arr[0] = self.global_step
 
+        if self.global_step % 2500 == 0 and self.global_step != 0:
+            self.trainer.strategy.setup_optimizers(self.trainer)
+            logging.info("Optimizers reset")
+
     # pylint: disable-next=unused-argument
     def on_train_batch_end(self, *args, **kwargs):
         lr_scheduler = self.lr_schedulers()
@@ -250,7 +254,8 @@ class Model(BaseLightningModule):
 
         reporter.report(
             "text/prompt",
-            batch["prompt"],
+            # batch["prompt"],
+            [self.tokenizer.decode(batch["model_input"].input_ids[0])],
             tag="text",
         )
 
