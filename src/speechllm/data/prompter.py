@@ -1,7 +1,5 @@
 # pylint: skip-file
-import os
 import random
-from multiprocessing.shared_memory import SharedMemory
 
 import numpy as np
 
@@ -27,13 +25,14 @@ special_tokens = [
 system_prompt = "You are an AI assistant named MMGPT who can understand and generate multimodal content, including text, speech, images and audio."
 
 
+"""
 def drop_tokens(item):
     shm = SharedMemory(
         create=False, size=4, name=f"global_step_{os.environ['MASTER_PORT']}"
     )
     arr = np.ndarray([1], np.int32, shm.buf)
     global_step = arr[0]
-    mean = max(min(global_step / 15000, 0.999), 0.001)
+    mean = max(min(global_step / 50000, 0.999), 0.001)
     sd = 0.1
     n = mean * (1 - mean) / sd**2
     a = mean * n
@@ -45,6 +44,43 @@ def drop_tokens(item):
         max(int(len(tokens) * drop_ratio), mean_num_tokens - 5), mean_num_tokens + 5
     )
     return " ".join(tokens[num_tokens:])
+"""
+
+
+def drop_tokens(item, global_step=None):
+    """
+    if global_step is None:
+        shm = SharedMemory(
+            create=False, size=4, name=f"global_step_{os.environ['MASTER_PORT']}"
+        )
+        arr = np.ndarray([1], np.int32, shm.buf)
+        global_step = arr[0]
+    """
+    return item
+    # drop_percentile = max(min(global_step / 100000, 1), 0)
+    tokens = item.split(" ")
+    if global_step is None:
+        # drop_percentile = max(min(14000 / 100000, 1), 0)
+        min_drop_num = 2
+    else:
+        # drop_percentile = max(min(global_step / 100000, 1), 0)
+        min_drop_num = int(len(tokens))
+    # drop_percentile = max(min((global_step - 50000 + 30000) / 50000, 1), 0)
+    # drop_percentile = max(min((66000 - 50000 + 30000) / 50000, 1), 0)
+    # drop_percentile = max(min((70000 - 50000 + 30000) / 50000, 1), 0)
+    # drop_percentile = max(min(10000 / 25000 + (global_step + 50000) / 200000, 1), 0)
+    # drop_percentile = max(min(10000 / 25000, 1), 0)
+    # min_drop_num = global_step // 5000
+    drop_num = min(
+        min_drop_num + int(np.random.exponential(scale=0.25)), int(len(tokens))
+    )
+    # drop_num = int(len(tokens))
+    # return " ".join(tokens[drop_num:])
+    if drop_num != 0:
+        tokens[:drop_num] = ["—"] * drop_num  # replace tokens with unused token
+        # tokens = tokens[:-drop_num]
+        # tokens = tokens[drop_num:]
+    return " ".join(tokens)
 
 
 class Prompter:
