@@ -94,6 +94,7 @@ def main(cfg):
             **params,
             strict=False,
         )
+        lightning_module.strict_loading = False
         lightning_module.set_config(cfg)
         trainer.fit(lightning_module, dm)
 
