@@ -197,7 +197,10 @@ class Model(BaseLightningModule):
         arr = np.ndarray([1], np.int32, shm.buf)
         arr[0] = self.global_step
 
-        if self.global_step % 2500 == 0 and self.global_step != 0:
+        if (
+            self.global_step % self.config.data_module.drop_freq == 0
+            and self.global_step != 0
+        ):
             self.trainer.strategy.setup_optimizers(self.trainer)
             logging.info("Optimizers reset")
 

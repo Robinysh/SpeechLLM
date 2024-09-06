@@ -43,7 +43,7 @@ def find_all_index(lst, value):
     return [i for i, x in enumerate(lst) if x == value]
 
 
-def drop_tokens(item, index, replace_id):
+def drop_tokens(item, index, replace_id, drop_freq):
     shm = SharedMemory(
         create=False, size=4, name=f"global_step_{os.environ['MASTER_PORT']}"
     )
@@ -57,7 +57,7 @@ def drop_tokens(item, index, replace_id):
     # drop_percentile = max(min((70000 - 50000 + 30000) / 50000, 1), 0)
     # drop_percentile = max(min(10000 / 25000 + (global_step + 50000) / 200000, 1), 0)
     # drop_percentile = max(min(10000 / 25000, 1), 0)
-    min_drop_num = global_step // 2500
+    min_drop_num = (global_step // drop_freq) + 1
     drop_num = min(min_drop_num + int(np.random.exponential(scale=0.25)), total_num)
     # drop_num = int(len(tokens))
     # return " ".join(tokens[drop_num:])
@@ -70,7 +70,7 @@ def drop_tokens(item, index, replace_id):
     return item
 
 
-def distill_collate(row, tokenizer):
+def distill_collate(row, tokenizer, drop_freq):
     row = list_dict_to_dict_list(row)
     row["model_input"] = tokenize_func(row["prompt"], tokenizer)
     row["model_teacher_input"] = tokenize_func(row["teacher_prompt"], tokenizer)
@@ -94,12 +94,12 @@ def distill_collate(row, tokenizer):
         # row['model_input'].input_ids[i, asr_index[-1][0]:asr_index[-1][1]] = blank_id
         # row['model_input'].input_ids[i, tts_index[-1][0]:tts_index[-1][0] + 2] = blank_id
         row["model_input"].input_ids[i] = drop_tokens(
-            row["model_input"].input_ids[i], asr_index, blank_id
+            row["model_input"].input_ids[i], asr_index, blank_id, drop_freq
         )
         # pylint: disable=using-constant-test
         if False:
             row["model_input"].input_ids[i] = drop_tokens(
-                row["model_input"].input_ids[i], tts_index, blank_id
+                row["model_input"].input_ids[i], tts_index, blank_id, drop_freq
             )
     row["model_input"]["labels"] = row["model_input"].input_ids.clone()
     row["model_input"]["labels"][row["model_input"].attention_mask == 0] = -100

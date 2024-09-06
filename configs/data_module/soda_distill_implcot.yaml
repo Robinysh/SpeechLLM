@@ -6,6 +6,7 @@ data_module:
     collate_fn:
       _partial_: true
       _target_: speechllm.data.collate.distill_collate
+      drop_freq: ${data_module.drop_freq}
       tokenizer:
         _target_: speechllm.data.utils.get_tokenizer
         model_fpath: ${paths.pretrained_models}/AnyGPT-chat
@@ -21,6 +22,7 @@ data_module:
     collate_fn:
       _partial_: true
       _target_: speechllm.data.collate.distill_collate
+      drop_freq: ${data_module.drop_freq}
       tokenizer:
         _target_: speechllm.data.utils.get_tokenizer
         model_fpath: ${paths.pretrained_models}/AnyGPT-chat
@@ -31,6 +33,7 @@ data_module:
     pin_memory: ${data_module.pin_memory}
     prefetch_factor: 2
   val_dataset: ${data_module.val_dataset}
+drop_freq: 2500
 num_preprocess_workers: 16
 num_workers: 2
 persistent_workers: false
