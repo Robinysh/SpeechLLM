@@ -101,6 +101,8 @@ def distill_collate(row, tokenizer):
             row["model_input"].input_ids[i] = drop_tokens(
                 row["model_input"].input_ids[i], tts_index, blank_id
             )
+    row["model_input"]["labels"] = row["model_input"].input_ids.clone()
+    row["model_input"]["labels"][row["model_input"].attention_mask == 0] = -100
 
     row["teacher_answer_start_position"] = []
     for item in row["model_teacher_input"].input_ids:
