@@ -2,3 +2,4 @@ checkpoint: /data/${oc.env:USER}/ml/${project_name}/${run_name}
 dataset_cache: /data3/${oc.env:USER}/cache/huggingface
 dataset_root: /data3/public/GigaSpeech/processed
 pretrained_models: null
+soda_root: /data3/public/soda

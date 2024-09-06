@@ -83,6 +83,11 @@ class Model(BaseLightningModule):
             opt = self.optimizers()[optimizer_idx]
 
         if isinstance(opt, torch.optim.Optimizer):
+            # These operations are expensive
+            # norms = grad_norm(self.anygpt, norm_type=2)
+            # reporter.report_dict(norms)
+            # grad_norm = torch.nn.utils.clip_grad_norm_(self.anygpt.parameters(), 99999)
+            # reporter.report('grad_norm', grad_norm)
             self.clip_gradients(
                 opt,
                 gradient_clip_val=self.gradient_clip_val,
@@ -265,6 +270,12 @@ class Model(BaseLightningModule):
             tag="text",
         )
 
+        reporter.report(
+            "text/label",
+            [self.tokenizer.decode(batch["model_input"].labels[0])],
+            tag="text",
+        )
+
         if "teacher_prompt" in batch:
             reporter.report(
                 "text/teacher_prompt",
@@ -310,7 +321,7 @@ class Model(BaseLightningModule):
                 )
 
                 scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
-                    optimizer, config_opt.lr_restart_period, 2
+                    optimizer, config_opt.lr_restart_period, 2, 1e-7
                 )
                 if config_opt.warmup_step > 0:
                     scheduler = WarmupLR(

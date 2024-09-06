@@ -32,18 +32,18 @@ data_module:
     prefetch_factor: 2
   val_dataset: ${data_module.val_dataset}
 num_preprocess_workers: 16
-num_workers: 4
+num_workers: 2
 persistent_workers: false
 pin_memory: false
 prefetch_factor: 2
 train_dataset:
-  _target_: speechllm.data.soda.pipeline.soda_tts_cot_pipeline
+  _target_: speechllm.data.soda.pipeline.soda_asr_tts_cot_pipeline
   cache_dir: ${paths.dataset_cache}
   database: ${database.train.soda}
   num_workers: ${data_module.num_preprocess_workers}
   stage: train
 val_dataset:
-  _target_: speechllm.data.soda.pipeline.soda_tts_cot_pipeline
+  _target_: speechllm.data.soda.pipeline.soda_asr_tts_cot_pipeline
   cache_dir: ${paths.dataset_cache}
   database: ${database.val.soda}
   num_workers: ${data_module.num_preprocess_workers}

@@ -10,12 +10,11 @@ detect_anomaly: false
 devices: 1
 limit_train_batches: null
 limit_val_batches: 100
-log_every_n_steps: 100
+log_every_n_steps: 200
 logger: ${logger}
 max_epochs: 99999
 num_sanity_val_steps: 1
 precision: bf16-mixed
-reload_dataloaders_every_n_epochs: 1
 strategy:
   _target_: lightning_habana.pytorch.strategies.SingleHPUStrategy
-val_check_interval: 500
+val_check_interval: 1000
