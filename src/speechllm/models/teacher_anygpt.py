@@ -25,8 +25,12 @@ def constructor(
     )
     if restore_ckpt is not None:
         ckpt = torch.load(restore_ckpt)
-        ckpt = {k.removeprefix("anygpt."): v for k, v in ckpt["state_dict"].items()}
-        model.load_state_dict(ckpt)
+        ckpt = {
+            k.removeprefix("anygpt."): v
+            for k, v in ckpt["state_dict"].items()
+            if k.startswith("anygpt.")
+        }
+        model.load_state_dict(ckpt, strict=False)
 
     for param in model.parameters():
         param.requires_grad = False
