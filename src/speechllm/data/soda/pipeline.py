@@ -2,7 +2,9 @@ from functools import partial
 from pathlib import Path
 
 import datasets
+import torch
 from datasets import load_dataset
+from datasets.distributed import split_dataset_by_node
 
 from speechllm.data.prompter import SodaASRTTSCOTPrompter, SodaCOTPrompter, SodaPrompter
 from speechllm.data.soda import processes
@@ -506,7 +508,11 @@ def soda_asr_tts_implicit_cot_pipeline(
 
     # Operations below dont cache and run on-the-fly
     ds = ds.to_iterable_dataset(num_shards=32)
-    ds = ds.shuffle(seed=41, buffer_size=512)
+    if torch.distributed.is_initialized():
+        world_size = torch.distributed.get_world_size()
+        process_rank = torch.distributed.get_rank()
+        ds = split_dataset_by_node(ds, world_size=world_size, rank=process_rank)
+    ds = ds.shuffle(seed=42, buffer_size=512)
 
     ds = ds.map(
         WrapInputOutput(

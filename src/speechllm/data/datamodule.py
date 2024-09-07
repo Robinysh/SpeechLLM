@@ -33,7 +33,7 @@ class BasicDataModule(L.LightningDataModule):
         self.val_dataloader_args = val_dataloader_args
 
     def train_dataloader(self):
-        return DataLoader(self.train_dataset, **self.train_dataloader_args)
+        return DataLoader(self.train_dataset(), **self.train_dataloader_args)
 
     def val_dataloader(self):
-        return DataLoader(self.val_dataset, **self.val_dataloader_args)
+        return DataLoader(self.val_dataset(), **self.val_dataloader_args)
