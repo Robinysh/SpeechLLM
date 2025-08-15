@@ -13,9 +13,9 @@ Current speech-based LLMs are predominantly trained on extensive ASR and TTS dat
 </div>
 
 ## Results
-Our model achieves a competitive win rate of <strong>42.3%</strong>, averaged over each LLM evaluator and metrics. This suggests that internalizing ASR CoT introduces only minor quality degradation.
+Our model achieves a competitive average win rate of <strong>42.3%</strong> against groundtruth labels. This suggests that internalizing ASR CoT introduces only minor quality degradation.
 <div align="center">
-  <img src="assets/winrate.jpg" alt="overview" style="width: 66%; height: auto;">
+  <img src="assets/winrate.jpg" alt="overview" style="width: 100%; height: auto;">
 </div>
 
 ## Setup
